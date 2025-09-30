@@ -29,6 +29,15 @@ $routes->get('/events/detail/(:num)', 'Events::detail/$1');
 $routes->get('/events/register/(:num)', 'Events::register/$1');
 $routes->get('/events/cancel/(:num)', 'Events::cancel/$1');
 
+$routes->get('/admin/dashboard', 'Admin::dashboard');
+
+$routes->get('/coordinator/dashboard', 'Coordinator::dashboard');
+
+$routes->get('/organizer/dashboard', 'Organizer::dashboard');
+
+
+
+
 
 
 
