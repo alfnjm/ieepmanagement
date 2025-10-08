@@ -16,7 +16,7 @@
         <div class="alert alert-danger"><?=$validation->listErrors()?></div>
     <?php endif;?>
 
-    <form method="post" action="<?= base_url('auth/register') ?>">
+    <form method="post">
         <?= csrf_field() ?>
         <div class="mb-3">
             <input type="text" name="name" class="form-control" placeholder="Nama" value="<?= old('name') ?>">

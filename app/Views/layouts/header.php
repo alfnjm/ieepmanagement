@@ -86,6 +86,16 @@
   </style>
 </head>
 <body>
+  <!-- Left side (gambar clean) -->
+<div class="auth-left d-none d-md-flex position-relative">
+
+  <!-- Back Arrow Button -->
+  <a href="<?= base_url('/') ?>" 
+     class="btn btn-link position-absolute top-0 start-0 m-3 text-decoration-none fw-bold" 
+     style="color:#5d4037; font-size: 1.2rem;">
+    ← Back
+  </a>
+
   <div class="auth-wrapper">
     <!-- Left side (gambar clean) -->
     <div class="auth-left d-none d-md-flex">
