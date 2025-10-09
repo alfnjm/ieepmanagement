@@ -39,6 +39,17 @@
         <div class="mb-3">
             <input type="text" name="ic_number" class="form-control" placeholder="IC Number" value="<?= old('ic_number') ?>">
         </div>
+        
+        <!-- Role Selection Field -->
+        <div class="mb-3">
+            <label for="role" class="form-label">Select Role</label>
+            <select name="role" id="role" class="form-control">
+                <option value="user" <?= old('role') == 'user' ? 'selected' : '' ?>>User</option>
+                <option value="organizer" <?= old('role') == 'organizer' ? 'selected' : '' ?>>Program Organizer</option>
+                <option value="coordinator" <?= old('role') == 'coordinator' ? 'selected' : '' ?>>IEEP Coordinator</option>
+            </select>
+            <small class="form-text text-muted">Choose your role in the system</small>
+        </div>
 
         <button class="btn btn-primary w-100">Register</button>
     </form>

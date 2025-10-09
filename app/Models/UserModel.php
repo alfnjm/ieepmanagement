@@ -8,7 +8,7 @@ class UserModel extends Model
     protected $table = 'users';
     protected $primaryKey = 'id';
     protected $allowedFields = [
-        'name', 'email', 'password', 'class', 'student_id', 'phone', 'ic_number',
+        'name', 'email', 'password', 'class', 'student_id', 'phone', 'ic_number', 'role',
         'created_at', 'updated_at' 
     ];
     
@@ -19,6 +19,7 @@ class UserModel extends Model
         'password' => 'required|min_length[8]',
         'student_id' => 'permit_empty|is_unique[users.student_id]',
         'ic_number'  => 'permit_empty|is_unique[users.ic_number]',
+        'role' => 'required|in_list[user,organizer,coordinator]', // Add role validation
     ];
     protected $validationMessages = [];
     protected $skipValidation = false;
