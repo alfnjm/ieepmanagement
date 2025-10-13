@@ -19,37 +19,29 @@
     <form method="post">
         <?= csrf_field() ?>
         <div class="mb-3">
-            <input type="text" name="name" class="form-control" placeholder="Nama" value="<?= old('name') ?>">
+            <input type="text" name="name" class="form-control" placeholder="Nama" value="<?= old('name') ?>" required>
         </div>
         <div class="mb-3">
-            <input type="email" name="email" class="form-control" placeholder="Email" value="<?= old('email') ?>">
+            <input type="email" name="email" class="form-control" placeholder="Email" value="<?= old('email') ?>" required>
         </div>
         <div class="mb-3">
-            <input type="password" name="password" class="form-control" placeholder="Password">
+            <input type="password" name="password" class="form-control" placeholder="Password" required>
         </div>
         <div class="mb-3">
-            <input type="text" name="class" class="form-control" placeholder="Class" value="<?= old('class') ?>">
+            <input type="text" name="class" class="form-control" placeholder="Class" value="<?= old('class') ?>" required>
         </div>
         <div class="mb-3">
-            <input type="text" name="student_id" class="form-control" placeholder="Matric Number" value="<?= old('student_id') ?>">
+            <input type="text" name="student_id" class="form-control" placeholder="Matric Number" value="<?= old('student_id') ?>" required>
         </div>
         <div class="mb-3">
-            <input type="text" name="phone" class="form-control" placeholder="Phone Number" value="<?= old('phone') ?>">
+            <input type="text" name="phone" class="form-control" placeholder="Phone Number" value="<?= old('phone') ?>" required>
         </div>
         <div class="mb-3">
-            <input type="text" name="ic_number" class="form-control" placeholder="IC Number" value="<?= old('ic_number') ?>">
+            <input type="text" name="ic_number" class="form-control" placeholder="IC Number" value="<?= old('ic_number') ?>" required>
         </div>
         
-        <!-- Role Selection Field -->
-        <div class="mb-3">
-            <label for="role" class="form-label">Select Role</label>
-            <select name="role" id="role" class="form-control">
-                <option value="user" <?= old('role') == 'user' ? 'selected' : '' ?>>User</option>
-                <option value="organizer" <?= old('role') == 'organizer' ? 'selected' : '' ?>>Program Organizer</option>
-                <option value="coordinator" <?= old('role') == 'coordinator' ? 'selected' : '' ?>>IEEP Coordinator</option>
-            </select>
-            <small class="form-text text-muted">Choose your role in the system</small>
-        </div>
+        <!-- Hidden role field set to 'user' by default -->
+        <input type="hidden" name="role" value="user">
 
         <button class="btn btn-primary w-100">Register</button>
     </form>

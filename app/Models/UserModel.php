@@ -21,25 +21,12 @@ class UserModel extends Model
     // Disable automatic validation
     protected $validationRules = [];
     protected $validationMessages = [];
-    protected $skipValidation = true; // This is important!
-
-    protected $beforeInsert = ['hashPassword'];
-    protected $beforeUpdate = ['hashPassword'];
-
-    protected function hashPassword(array $data)
-    {
-        if (isset($data['data']['password']) && !empty($data['data']['password'])) {
-            $data['data']['password'] = password_hash($data['data']['password'], PASSWORD_DEFAULT);
-        } else {
-            unset($data['data']['password']);
-        }
-        return $data;
-    }
+    protected $skipValidation = true;
 
     /**
-     * Custom validation for creating users
+     * Custom validation for user registration
      */
-    public function validateCreate($data)
+    public function validateRegistration($data)
     {
         $validation = \Config\Services::validation();
         
@@ -47,14 +34,16 @@ class UserModel extends Model
             'name' => 'required|min_length[3]|max_length[255]',
             'email' => 'required|valid_email|is_unique[users.email]',
             'password' => 'required|min_length[8]',
-            'role' => 'required|in_list[user,admin,coordinator,organizer]',
-            'class' => 'permit_empty|max_length[50]',
-            'student_id' => 'permit_empty|max_length[50]',
-            'phone' => 'permit_empty|max_length[20]',
-            'ic_number' => 'permit_empty|max_length[20]'
+            'class' => 'required|max_length[50]',
+            'student_id' => 'required|max_length[50]|is_unique[users.student_id]',
+            'phone' => 'required|max_length[20]',
+            'ic_number' => 'required|max_length[20]'
         ], [
             'email' => [
                 'is_unique' => 'This email is already registered.'
+            ],
+            'student_id' => [
+                'is_unique' => 'This matric number is already registered.'
             ]
         ]);
 
@@ -62,63 +51,14 @@ class UserModel extends Model
     }
 
     /**
-     * Custom validation for updating users
+     * Create user with default 'user' role
      */
-    public function validateUpdate($data, $id)
+    public function createUser($data)
     {
-        $validation = \Config\Services::validation();
+        // Ensure role is set to 'user'
+        $data['role'] = 'user';
         
-        $validation->setRules([
-            'name' => 'required|min_length[3]|max_length[255]',
-            'email' => "required|valid_email|is_unique[users.email,id,{$id}]",
-            'password' => 'permit_empty|min_length[8]',
-            'role' => 'required|in_list[user,admin,coordinator,organizer]',
-            'class' => 'permit_empty|max_length[50]',
-            'student_id' => 'permit_empty|max_length[50]',
-            'phone' => 'permit_empty|max_length[20]',
-            'ic_number' => 'permit_empty|max_length[20]'
-        ], [
-            'email' => [
-                'is_unique' => 'This email is already registered.'
-            ]
-        ]);
-
-        return $validation->run($data);
-    }
-
-    /**
-     * Custom validation for student fields
-     */
-    public function validateStudentFields($data)
-    {
-        $validation = \Config\Services::validation();
-        
-        // If role is 'user' (student), require student fields
-        if ($data['role'] === 'user') {
-            $validation->setRules([
-                'student_id' => 'required|max_length[50]',
-                'phone' => 'required|max_length[20]',
-                'ic_number' => 'required|max_length[20]',
-                'class' => 'required|max_length[50]'
-            ], [
-                'student_id' => [
-                    'required' => 'Matric Number is required for students.'
-                ],
-                'phone' => [
-                    'required' => 'Phone number is required for students.'
-                ],
-                'ic_number' => [
-                    'required' => 'IC Number is required for students.'
-                ],
-                'class' => [
-                    'required' => 'Class is required for students.'
-                ]
-            ]);
-            
-            return $validation->run($data);
-        }
-        
-        return true;
+        return $this->insert($data);
     }
 
     /**
@@ -162,11 +102,11 @@ class UserModel extends Model
     }
 
     /**
-     * Verify user password
+     * Find user by student_id
      */
-    public function verifyPassword($password, $hashedPassword)
+    public function findByStudentId($student_id)
     {
-        return password_verify($password, $hashedPassword);
+        return $this->where('student_id', $student_id)->first();
     }
 
     /**
@@ -184,6 +124,7 @@ class UserModel extends Model
     {
         return $this->like('name', $searchTerm)
                     ->orLike('email', $searchTerm)
+                    ->orLike('student_id', $searchTerm)
                     ->findAll();
     }
 
@@ -206,6 +147,20 @@ class UserModel extends Model
     public function isEmailUnique($email, $exceptId = null)
     {
         $builder = $this->where('email', $email);
+        
+        if ($exceptId) {
+            $builder->where('id !=', $exceptId);
+        }
+        
+        return $builder->countAllResults() === 0;
+    }
+
+    /**
+     * Check if student_id exists (for update validation)
+     */
+    public function isStudentIdUnique($student_id, $exceptId = null)
+    {
+        $builder = $this->where('student_id', $student_id);
         
         if ($exceptId) {
             $builder->where('id !=', $exceptId);
