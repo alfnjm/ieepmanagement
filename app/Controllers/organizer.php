@@ -2,6 +2,7 @@
 
 namespace App\Controllers;
 
+<<<<<<< HEAD
 use App\Models\PendingProposalModel;
 use CodeIgniter\Controller;
 
@@ -101,4 +102,13 @@ class Organizer extends BaseController
     {
         return view('organizer/attendance');
     }
+=======
+class Organizer extends BaseController
+{
+    public function dashboard()
+    {
+        $data['title'] = "Program Organizer Dashboard";
+        return view('organizer/dashboard', $data);
+    }
+>>>>>>> 272b757889987ba1722b44220c478f3eaebe9140
 }

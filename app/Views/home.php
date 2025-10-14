@@ -13,7 +13,11 @@
 
             <?php if(!session()->get('student_id')): ?>
               <!-- kalau tak login, redirect ke login -->
+<<<<<<< HEAD
               <a href="<?= base_url('auth/register') ?>" class="btn btn-primary mt-2">Register</a>
+=======
+              <a href="<?= base_url('auth/login') ?>" class="btn btn-primary mt-2">Register</a>
+>>>>>>> 272b757889987ba1722b44220c478f3eaebe9140
             <?php else: ?>
               <!-- kalau dah login, redirect ke event register -->
               <a href="<?= base_url('events/register/'.$event['id']) ?>" class="btn btn-success mt-2">Register</a>

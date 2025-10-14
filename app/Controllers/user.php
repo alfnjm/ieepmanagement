@@ -15,8 +15,12 @@ class User extends BaseController
 
         $userId = session()->get('id');
 
+<<<<<<< HEAD
         // Note: Ideally, this should use EventModel::getApprovedEvents()
         $events = $eventModel->findAll(); 
+=======
+        $events = $eventModel->findAll();
+>>>>>>> 272b757889987ba1722b44220c478f3eaebe9140
         $userRegs = $registrationModel->where('user_id', $userId)->findAll();
 
         $registeredEvents = [];
@@ -33,6 +37,7 @@ class User extends BaseController
     public function registerEvent($eventId)
     {
         $registrationModel = new RegistrationModel();
+<<<<<<< HEAD
         
         // ⭐ CRITICAL FIX APPLIED: Set createdField to false temporarily.
         // This is a necessary trick when the CodeIgniter query builder adds a 
@@ -49,6 +54,12 @@ class User extends BaseController
             // now that the model's auto-logic is temporarily disabled for this query.
             'created_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s'),
+=======
+        $registrationModel->insert([
+            'user_id' => session()->get('id'),
+            'event_id' => $eventId,
+            'certificate_ready' => 0
+>>>>>>> 272b757889987ba1722b44220c478f3eaebe9140
         ]);
 
         return redirect()->to('user/dashboard')->with('success', 'Successfully registered for the event.');
@@ -58,6 +69,9 @@ class User extends BaseController
     {
         return "Certificate printing for event ID: " . $eventId;
     }
+<<<<<<< HEAD
 
     
+=======
+>>>>>>> 272b757889987ba1722b44220c478f3eaebe9140
 }

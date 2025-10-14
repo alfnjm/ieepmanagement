@@ -2,15 +2,19 @@
 
 namespace App\Controllers;
 
+<<<<<<< HEAD
 use App\Models\PendingOrganizerModel;
 use App\Models\UserModel;
 use App\Models\PendingProposalModel;
 use App\Models\EventModel; // <<< ADDED: Import the live Event Model
 
+=======
+>>>>>>> 272b757889987ba1722b44220c478f3eaebe9140
 class Coordinator extends BaseController
 {
     public function dashboard()
     {
+<<<<<<< HEAD
         $pendingModel = new PendingOrganizerModel();
         $data['pendingOrganizers'] = $pendingModel->findAll();
 
@@ -144,4 +148,9 @@ class Coordinator extends BaseController
         return view('coordinator/upcoming_events', $data);
     }
 
+=======
+        $data['title'] = "IEEP Coordinator Dashboard";
+        return view('coordinator/dashboard', $data);
+    }
+>>>>>>> 272b757889987ba1722b44220c478f3eaebe9140
 }

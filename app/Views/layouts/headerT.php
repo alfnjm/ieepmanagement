@@ -47,7 +47,11 @@
             <a class="btn btn-nav" href="<?= base_url('auth/login') ?>">Login</a>
           </li>
           <li class="nav-item">
+<<<<<<< HEAD
             <a class="btn btn-nav" href="<?= base_url('auth/register') ?>">Register</a>
+=======
+            <a class="btn btn-nav" href="<?= base_url('profile') ?>">Profile</a>
+>>>>>>> 272b757889987ba1722b44220c478f3eaebe9140
           </li>
         </ul>
       </div>

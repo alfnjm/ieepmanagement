@@ -44,6 +44,7 @@ class Admin extends BaseController
                 'ic_number' => $this->request->getPost('ic_number') ?? ''
             ];
 
+<<<<<<< HEAD
             // Use custom validation for create
             if (!$this->userModel->validateCreate($userData)) {
                 return redirect()->back()->withInput()->with('errors', \Config\Services::validation()->getErrors());
@@ -54,6 +55,8 @@ class Admin extends BaseController
                 return redirect()->back()->withInput()->with('errors', \Config\Services::validation()->getErrors());
             }
 
+=======
+>>>>>>> 272b757889987ba1722b44220c478f3eaebe9140
             if ($this->userModel->save($userData)) {
                 return redirect()->to('/admin/dashboard')->with('success', 'User created successfully!');
             } else {
