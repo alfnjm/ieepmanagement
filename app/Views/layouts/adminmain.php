@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= $title ?? 'Organizer Dashboard' ?></title>
+    <title><?= $title ?? 'Admin Panel' ?></title>
     <!-- Use Bootstrap 5.3.3 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
@@ -15,13 +15,15 @@
             --color-accent: #3b82f6; /* Bright Blue for emphasis */
             --color-bg-main: #f8fafc; /* Very Light Gray/White for content area */
             --color-shadow: rgba(0, 0, 0, 0.1);
+            --color-text-dark: #334155; /* Slate Gray for footer text */
+            --color-border: #e2e8f0; /* Light border for contrast */
             --sidebar-width: 250px;
         }
 
         body {
             background-color: var(--color-bg-main);
             min-height: 100vh;
-            font-family: 'Inter', 'Segoe UI', sans-serif; /* Cleaner, more professional font stack */
+            font-family: 'Inter', 'Segoe UI', sans-serif;
             margin: 0;
             padding-left: var(--sidebar-width); /* Push content over */
         }
@@ -52,10 +54,6 @@
             font-size: 1.5rem;
             color: #fff;
             margin-bottom: 0.5rem;
-        }
-
-        .sidebar .list-group {
-            border-radius: 0;
         }
 
         .sidebar a {
@@ -93,13 +91,12 @@
         /* ----------------------- */
         .content {
             padding: 2rem 3rem;
-            min-height: calc(100vh - 50px); /* Account for fixed footer height */
-            /* The margin-left is moved to the body tag */
+            min-height: calc(100vh - 50px);
         }
         
         /* Fixed Footer */
         footer {
-            background-color: #ffffff; /* White footer for contrast */
+            background-color: #ffffff;
             color: var(--color-text-dark);
             padding: 0.8rem 2rem;
             text-align: left;
@@ -113,14 +110,10 @@
             font-size: 0.9rem;
         }
         
-        /* Icon styles (using common font-awesome classes as placeholders) */
-        /* Since we can't load font-awesome, we'll use emojis/symbols or simple icons */
+        /* Icon styles */
         .icon-dashboard::before { content: "📊"; }
-        .icon-create::before { content: "🎯"; }
-        .icon-proposals::before { content: "📑"; }
         .icon-participants::before { content: "👥"; }
-        .icon-certificates::before { content: "🎓"; }
-        .icon-attendance::before { content: "📋"; }
+        .icon-events::before { content: "📅"; } /* New icon for events */
         .icon-logout::before { content: "🚪"; }
 
     </style>
@@ -130,28 +123,19 @@
     <!-- Sidebar -->
     <div class="sidebar">
         <div class="sidebar-header">
-            <h4>IEEP Organizer</h4>
-            <small class="text-secondary">Management Panel</small>
+            <h4>Admin Panel</h4>
+            <small class="text-secondary">System Management</small>
         </div>
         
         <!-- Navigation Links -->
-        <a href="<?= base_url('organizer/dashboard') ?>" class="<?= (uri_string() == 'organizer/dashboard') ? 'active' : '' ?>">
+        <a href="<?= base_url('admin/dashboard') ?>" class="<?= (uri_string() == 'admin/dashboard') ? 'active' : '' ?>">
             <i class="icon-dashboard"></i> Dashboard
         </a>
-        <a href="<?= base_url('organizer/create-event') ?>" class="<?= (uri_string() == 'organizer/create-event') ? 'active' : '' ?>">
-            <i class="icon-create"></i> Create Event
+        <a href="<?= base_url('admin/users') ?>" class="<?= (uri_string() == 'admin/users') ? 'active' : '' ?>">
+            <i class="icon-participants"></i> Users
         </a>
-        <a href="<?= base_url('organizer/my-proposals') ?>" class="<?= (uri_string() == 'organizer/my-proposals') ? 'active' : '' ?>">
-            <i class="icon-proposals"></i> My Proposals
-        </a>
-        <a href="<?= base_url('organizer/participants') ?>" class="<?= (uri_string() == 'organizer/participants') ? 'active' : '' ?>">
-            <i class="icon-participants"></i> Participants
-        </a>
-        <a href="<?= base_url('organizer/certificates') ?>" class="<?= (uri_string() == 'organizer/certificates') ? 'active' : '' ?>">
-            <i class="icon-certificates"></i> Certificates
-        </a>
-        <a href="<?= base_url('organizer/attendance') ?>" class="<?= (uri_string() == 'organizer/attendance') ? 'active' : '' ?>">
-            <i class="icon-attendance"></i> Attendance
+        <a href="<?= base_url('admin/events') ?>" class="<?= (uri_string() == 'admin/events') ? 'active' : '' ?>">
+            <i class="icon-events"></i> Ongoing Events
         </a>
         <hr>
         <a href="<?= base_url('auth/logout') ?>" class="text-danger">
@@ -166,7 +150,7 @@
 
     <!-- Footer -->
     <footer>
-        IEEP Organizer Panel © <?= date('Y') ?>
+        IEEP Admin Panel © <?= date('Y') ?>
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

@@ -16,12 +16,13 @@ class Events extends BaseController
         $this->registrationModel = new RegistrationModel();
     }
 
+    // 🗓️ Show all upcoming events
     public function index()
     {
-        $userId = session()->get('user_id'); // assume user login stored here
+        $userId = session()->get('id'); // ✅ Correct session key
         $events = $this->eventModel->findAll();
 
-        // registrations by user
+        // Find which events this user has registered for
         $registrations = [];
         if ($userId) {
             $userRegs = $this->registrationModel->where('user_id', $userId)->findAll();
@@ -36,31 +37,50 @@ class Events extends BaseController
         ]);
     }
 
+    // ✅ Register for an event
     public function register($eventId)
     {
+        // 🔍 Step 1: Dump session for debugging (remove after testing)
+        // dd(session()->get());
+
+        // ✅ Use the correct key (based on your Auth controller)
+        // In your Auth.php → session()->set(['id' => $user['id'], ...])
+        // So we should use 'id' — not 'user_id' or 'student_id'
         $userId = session()->get('user_id');
+
+        // 🧩 Step 2: If not logged in, redirect
         if (!$userId) {
-            return redirect()->to('/login')->with('error', 'You must be logged in.');
+            return redirect()->to('/auth/login')
+                ->with('error', 'You must be logged in to register for an event.');
         }
 
+        // 🧠 Step 3: Prevent duplicate registrations
         $exists = $this->registrationModel
             ->where('user_id', $userId)
             ->where('event_id', $eventId)
             ->first();
 
-        if (!$exists) {
-            $this->registrationModel->insert([
-                'user_id' => $userId,
-                'event_id' => $eventId
-            ]);
+        if ($exists) {
+            return redirect()->to('/events')
+                ->with('info', 'You are already registered for this event.');
         }
 
-        return redirect()->to('/events')->with('success', 'Registered successfully');
+        // 📝 Step 4: Insert registration record
+        $this->registrationModel->insert([
+            'user_id'    => $userId,
+            'event_id'   => $eventId,
+            'created_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        // ✅ Step 5: Redirect back with success message
+        return redirect()->to('/events')
+            ->with('success', 'You have successfully registered for the event.');
     }
 
+    // ❌ Cancel registration
     public function cancel($eventId)
     {
-        $userId = session()->get('user_id');
+        $userId = session()->get('id'); // ✅ Correct session key
         if (!$userId) {
             return redirect()->to('/login')->with('error', 'You must be logged in.');
         }
@@ -70,9 +90,10 @@ class Events extends BaseController
             ->where('event_id', $eventId)
             ->delete();
 
-        return redirect()->to('/events')->with('success', 'Registration cancelled');
+        return redirect()->to('/events')->with('success', 'Registration cancelled.');
     }
 
+    // 📄 Show event details
     public function detail($eventId)
     {
         $event = $this->eventModel->find($eventId);

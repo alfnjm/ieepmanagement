@@ -16,14 +16,9 @@
         <div class="alert alert-danger"><?=$validation->listErrors()?></div>
     <?php endif;?>
 
-<<<<<<< HEAD
     <form method="post" id="registrationForm">
         <?= csrf_field() ?>
         
-=======
-    <form method="post">
-        <?= csrf_field() ?>
->>>>>>> 272b757889987ba1722b44220c478f3eaebe9140
         <div class="mb-3">
             <input type="text" name="name" class="form-control" placeholder="Nama" value="<?= old('name') ?>" required>
         </div>
@@ -33,7 +28,6 @@
         <div class="mb-3">
             <input type="password" name="password" class="form-control" placeholder="Password" required>
         </div>
-<<<<<<< HEAD
 
         <div class="mb-3">
             <label for="role" class="form-label">Select Role</label>
@@ -76,23 +70,6 @@
                 </div>
             <?php endif; ?>
         </div>
-=======
-        <div class="mb-3">
-            <input type="text" name="class" class="form-control" placeholder="Class" value="<?= old('class') ?>" required>
-        </div>
-        <div class="mb-3">
-            <input type="text" name="student_id" class="form-control" placeholder="Matric Number" value="<?= old('student_id') ?>" required>
-        </div>
-        <div class="mb-3">
-            <input type="text" name="phone" class="form-control" placeholder="Phone Number" value="<?= old('phone') ?>" required>
-        </div>
-        <div class="mb-3">
-            <input type="text" name="ic_number" class="form-control" placeholder="IC Number" value="<?= old('ic_number') ?>" required>
-        </div>
-        
-        <!-- Hidden role field set to 'user' by default -->
-        <input type="hidden" name="role" value="user">
->>>>>>> 272b757889987ba1722b44220c478f3eaebe9140
 
         <button class="btn btn-primary w-100">Register</button>
     </form>
@@ -100,7 +77,6 @@
     <a href="<?= base_url('auth/login') ?>" class="small-link">Already have an account? Login</a>
 </div>
 
-<<<<<<< HEAD
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const roleSelect = document.getElementById('role');
@@ -138,7 +114,5 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 
-=======
->>>>>>> 272b757889987ba1722b44220c478f3eaebe9140
 <?= $this->endSection() ?>
 <?= $this->include('layouts/footer') ?>

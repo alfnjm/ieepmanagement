@@ -6,7 +6,6 @@ use CodeIgniter\Model;
 
 class EventModel extends Model
 {
-<<<<<<< HEAD
     protected $table        = 'events';
     protected $primaryKey = 'id';
 
@@ -36,14 +35,4 @@ class EventModel extends Model
                     ->orderBy('date', 'ASC')
                     ->findAll();
     }
-=======
-    protected $table      = 'events';
-    protected $primaryKey = 'id';
-
-    protected $allowedFields = [
-        'title', 'description', 'thumbnail', 'date', 'location'
-    ];
-
-    protected $useTimestamps = true;
->>>>>>> 272b757889987ba1722b44220c478f3eaebe9140
 }

@@ -168,7 +168,14 @@ if ($role === 'organizer') {
                             'isLoggedIn' => true
                         ];
 
-                        session()->set($userData);
+                        session()->set([
+                            'id'         => $user['id'],   // ✅ changed key to 'id'
+                            'name'       => $user['name'],
+                            'email'      => $user['email'],
+                            'role'       => $role,
+                            'isLoggedIn' => true
+                        ]);
+
 
                         return $this->redirectToDashboard($role);
                     } else {

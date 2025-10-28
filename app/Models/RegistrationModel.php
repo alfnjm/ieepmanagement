@@ -6,14 +6,16 @@ use CodeIgniter\Model;
 
 class RegistrationModel extends Model
 {
-    protected $table      = 'registrations';
+    protected $table = 'registrations';
     protected $primaryKey = 'id';
 
+    // ✅ Only include columns that actually exist in your table
     protected $allowedFields = [
-        'user_id', 'event_id', 'created_at'
+        'user_id',
+        'event_id',
+        'created_at'
     ];
 
-    protected $useTimestamps = true;
-    protected $createdField  = 'created_at';
-    protected $updatedField  = null; // table tak ada updated_at
+    // ✅ Disable automatic timestamps since we handle created_at manually
+    protected $useTimestamps = false;
 }

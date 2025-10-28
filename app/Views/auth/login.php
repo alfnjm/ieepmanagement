@@ -12,11 +12,7 @@
         <div class="alert alert-danger"><?=session()->getFlashdata('error')?></div>
     <?php endif;?>
 
-<<<<<<< HEAD
     <form method="post" action="<?= base_url('auth/login') ?>">
-=======
-    <form method="POST" action="<?= base_url('auth/login') ?>">
->>>>>>> 272b757889987ba1722b44220c478f3eaebe9140
         <?= csrf_field() ?>
         <div class="mb-3">
             <input type="email" name="email" class="form-control" placeholder="Email">

@@ -72,6 +72,19 @@
           </div>
         </div>
 
+        <!-- Staff-specific fields -->
+<div id="staffFields" style="<?= (in_array($user['role'], ['coordinator', 'organizer'])) ? 'display: block;' : 'display: none;' ?>">
+  <div class="row">
+    <div class="col-md-6">
+      <div class="mb-3">
+        <label class="form-label">Staff ID</label>
+        <input type="text" name="staff_id" class="form-control" value="<?= old('staff_id', $user['staff_id']) ?>">
+      </div>
+    </div>
+  </div>
+</div>
+
+
         <!-- Student-specific fields -->
         <div id="studentFields" style="<?= ($user['role'] === 'user') ? 'display: block;' : 'display: none;' ?>">
           <div class="row">
@@ -117,26 +130,33 @@
 function toggleStudentFields() {
     const roleSelect = document.getElementById('roleSelect');
     const studentFields = document.getElementById('studentFields');
-    
+    const staffFields = document.getElementById('staffFields');
+
     if (roleSelect.value === 'user') {
+        // Show student fields
         studentFields.style.display = 'block';
-        // Make fields required
-        document.querySelectorAll('#studentFields input').forEach(input => {
-            input.required = true;
-        });
-    } else {
+        staffFields.style.display = 'none';
+        document.querySelectorAll('#studentFields input').forEach(input => input.required = true);
+        document.querySelectorAll('#staffFields input').forEach(input => input.required = false);
+    } 
+    else if (roleSelect.value === 'coordinator' || roleSelect.value === 'organizer') {
+        // Show staff fields
+        staffFields.style.display = 'block';
         studentFields.style.display = 'none';
-        // Remove required attribute
-        document.querySelectorAll('#studentFields input').forEach(input => {
-            input.required = false;
-        });
+        document.querySelectorAll('#staffFields input').forEach(input => input.required = true);
+        document.querySelectorAll('#studentFields input').forEach(input => input.required = false);
+    } 
+    else {
+        // Hide both
+        studentFields.style.display = 'none';
+        staffFields.style.display = 'none';
+        document.querySelectorAll('#studentFields input, #staffFields input').forEach(input => input.required = false);
     }
 }
 
 // Initialize on page load
-document.addEventListener('DOMContentLoaded', function() {
-    toggleStudentFields();
-});
+document.addEventListener('DOMContentLoaded', toggleStudentFields);
 </script>
+
 
 <?= $this->endSection() ?>

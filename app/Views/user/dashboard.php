@@ -1,4 +1,4 @@
-<?= $this->include('layouts/headerT') ?>
+<?= $this->include('layouts/usermain') ?>
 
 <div class="container my-5">
   <h2 class="mb-4">Hye, <?= session()->get('name'); ?> 👋</h2>
@@ -52,8 +52,8 @@
             <img src="<?= is_file(FCPATH.'uploads/'.$event['thumbnail']) 
                         ? base_url('uploads/'.$event['thumbnail']) 
                         : $event['thumbnail'] ?>" 
-                 class="card-img-top" 
-                 alt="Event Thumbnail">
+                class="card-img-top" 
+                alt="Event Thumbnail">
           <?php endif; ?>
           <div class="card-body">
             <h5 class="card-title"><?= esc($event['title']) ?></h5>
@@ -64,7 +64,7 @@
               <span class="badge bg-success mt-2">Already Registered</span>
             <?php else: ?>
               <a href="<?= base_url('user/registerEvent/'.$event['id']) ?>" 
-                 class="btn btn-primary btn-sm mt-2">Register</a>
+                class="btn btn-primary btn-sm mt-2">Register</a>
             <?php endif; ?>
           </div>
         </div>

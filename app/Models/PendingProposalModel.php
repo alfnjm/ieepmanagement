@@ -13,12 +13,14 @@ class PendingProposalModel extends Model
         'event_date',
         'event_time',
         'event_location',
-        'eligible_age',
+        'program_start',
+        'program_end',
         'eligible_semesters',
         'event_description',
         'poster_image',
         'proposal_file',
         'status',
+        'organizer_id'
     ];
 
     protected $useTimestamps = true;

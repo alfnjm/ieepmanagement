@@ -1,5 +1,4 @@
 <?php
-// app/Controllers/Admin.php
 
 namespace App\Controllers;
 
@@ -15,6 +14,9 @@ class Admin extends BaseController
         $this->userModel = new UserModel();
     }
 
+    /**
+     * Admin Dashboard
+     */
     public function dashboard()
     {
         $userCounts = $this->userModel->getUserCountByRole();
@@ -30,89 +32,145 @@ class Admin extends BaseController
         return view('admin/dashboard', $data);
     }
 
-    public function createUser()
+    /**
+     * Users Page - Manage Users
+     */
+    public function users()
     {
-        if ($this->request->getMethod() === 'POST') {
-            $userData = [
-                'name' => $this->request->getPost('name'),
-                'email' => $this->request->getPost('email'),
-                'password' => $this->request->getPost('password'),
-                'role' => $this->request->getPost('role'),
-                'class' => $this->request->getPost('class') ?? '',
-                'student_id' => $this->request->getPost('student_id') ?? '',
-                'phone' => $this->request->getPost('phone') ?? '',
-                'ic_number' => $this->request->getPost('ic_number') ?? ''
-            ];
+        $data = [
+            'title' => 'Manage Users',
+            'users' => $this->userModel->orderBy('created_at', 'DESC')->findAll(),
+            'userCounts' => $this->userModel->getUserCountByRole()
+        ];
 
-<<<<<<< HEAD
-            // Use custom validation for create
-            if (!$this->userModel->validateCreate($userData)) {
-                return redirect()->back()->withInput()->with('errors', \Config\Services::validation()->getErrors());
-            }
-
-            // Perform custom validation for student fields
-            if (!$this->userModel->validateStudentFields($userData)) {
-                return redirect()->back()->withInput()->with('errors', \Config\Services::validation()->getErrors());
-            }
-
-=======
->>>>>>> 272b757889987ba1722b44220c478f3eaebe9140
-            if ($this->userModel->save($userData)) {
-                return redirect()->to('/admin/dashboard')->with('success', 'User created successfully!');
-            } else {
-                return redirect()->back()->withInput()->with('error', 'Failed to create user. Please try again.');
-            }
-        }
-
-        return redirect()->to('/admin/dashboard');
-    }
-
-    public function deleteUser($id)
-    {
-        // Prevent admin from deleting themselves
-        $currentUserId = session()->get('user_id');
-        if ($id == $currentUserId) {
-            return redirect()->to('/admin/dashboard')
-                ->with('error', 'You cannot delete your own account!');
-        }
-
-        // Check if user exists
-        $user = $this->userModel->find($id);
-        if (!$user) {
-            return redirect()->to('/admin/dashboard')
-                ->with('error', 'User not found!');
-        }
-
-        if ($this->userModel->delete($id)) {
-            return redirect()->to('/admin/dashboard')
-                ->with('success', 'User deleted successfully!');
-        } else {
-            return redirect()->to('/admin/dashboard')
-                ->with('error', 'Failed to delete user!');
-        }
+        return view('admin/users', $data);
     }
 
     /**
-     * Edit user
+     * Ongoing Events Page
+     */
+    public function events()
+    {
+        $data = [
+            'title' => 'Ongoing Events',
+        ];
+
+        return view('admin/events', $data);
+    }
+
+    /**
+     * Create new user
+     */
+    public function createUser()
+    {
+        if ($this->request->getMethod() === 'POST') {
+            $role = $this->request->getPost('role');
+
+            // ✅ Validation Rules
+            $rules = [
+                'name'  => 'required|min_length[3]',
+                'email' => 'required|valid_email|is_unique[users.email]',
+                'password' => 'required|min_length[6]',
+                'role'  => 'required',
+            ];
+
+            if ($role === 'user') {
+                $rules['student_id'] = 'required';
+                $rules['class'] = 'required';
+            } elseif (in_array($role, ['coordinator', 'organizer'])) {
+                $rules['staff_id'] = 'required';
+            }
+
+            if (!$this->validate($rules)) {
+                return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
+            }
+
+            $userData = [
+                'name'        => $this->request->getPost('name'),
+                'email'       => $this->request->getPost('email'),
+                'password'    => password_hash($this->request->getPost('password'), PASSWORD_DEFAULT),
+                'role'        => $role,
+                'class'       => $this->request->getPost('class'),
+                'student_id'  => $this->request->getPost('student_id'),
+                'phone'       => $this->request->getPost('phone'),
+                'ic_number'   => $this->request->getPost('ic_number'),
+                'staff_id'    => $this->request->getPost('staff_id'),
+            ];
+
+            if ($this->userModel->save($userData)) {
+                return redirect()->to('/admin/users')->with('success', 'User created successfully!');
+            }
+
+            return redirect()->back()->withInput()->with('error', 'Failed to create user.');
+        }
+
+        return redirect()->to('/admin/users');
+    }
+
+    /**
+     * Delete user
+     */
+    public function deleteUser($id)
+    {
+        $currentUserId = session()->get('user_id');
+        if ($id == $currentUserId) {
+            return redirect()->to('admin/users')->with('error', 'You cannot delete your own account!');
+        }
+
+        $user = $this->userModel->find($id);
+        if (!$user) {
+            return redirect()->to('admin/users')->with('error', 'User not found!');
+        }
+
+        if ($this->userModel->delete($id)) {
+            return redirect()->to('admin/users')->with('success', 'User deleted successfully!');
+        }
+
+        return redirect()->to('admin/users')->with('error', 'Failed to delete user.');
+    }
+
+    /**
+     * ✅ Edit user (GET + POST)
      */
     public function editUser($id)
     {
         $user = $this->userModel->find($id);
-        
+
         if (!$user) {
-            return redirect()->to('/admin/dashboard')
-                ->with('error', 'User not found!');
+            return redirect()->to('admin/users')->with('error', 'User not found!');
         }
 
+        // --- If POST request, update user ---
         if ($this->request->getMethod() === 'POST') {
+            $role = $this->request->getPost('role');
+
+            // ✅ Validation Rules
+            $rules = [
+                'name'  => 'required|min_length[3]',
+                'email' => "required|valid_email|is_unique[users.email,id,{$id}]",
+                'role'  => 'required',
+            ];
+
+            if ($role === 'user') {
+                $rules['student_id'] = 'required';
+                $rules['class'] = 'required';
+            } elseif (in_array($role, ['coordinator', 'organizer'])) {
+                $rules['staff_id'] = 'required';
+            }
+
+            if (!$this->validate($rules)) {
+                return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
+            }
+
             $userData = [
-                'name' => $this->request->getPost('name'),
-                'email' => $this->request->getPost('email'),
-                'role' => $this->request->getPost('role'),
-                'class' => $this->request->getPost('class') ?? '',
-                'student_id' => $this->request->getPost('student_id') ?? '',
-                'phone' => $this->request->getPost('phone') ?? '',
-                'ic_number' => $this->request->getPost('ic_number') ?? ''
+                'name'        => $this->request->getPost('name'),
+                'email'       => $this->request->getPost('email'),
+                'role'        => $role,
+                'class'       => $this->request->getPost('class'),
+                'student_id'  => $this->request->getPost('student_id'),
+                'phone'       => $this->request->getPost('phone'),
+                'ic_number'   => $this->request->getPost('ic_number'),
+                'staff_id'    => $this->request->getPost('staff_id'),
             ];
 
             // Only update password if provided
@@ -120,28 +178,14 @@ class Admin extends BaseController
                 $userData['password'] = $this->request->getPost('password');
             }
 
-            // Use custom validation for update (excludes current user's email)
-            if (!$this->userModel->validateUpdate($userData, $id)) {
-                return redirect()->back()->withInput()->with('errors', \Config\Services::validation()->getErrors());
-            }
-
-            // Perform custom validation for student fields
-            if (!$this->userModel->validateStudentFields($userData)) {
-                return redirect()->back()->withInput()->with('errors', \Config\Services::validation()->getErrors());
-            }
-
-            // Try to update the user - use skipValidation(true) to ensure no automatic validation
             if ($this->userModel->update($id, $userData)) {
-                return redirect()->to('/admin/dashboard')
-                    ->with('success', 'User updated successfully!');
-            } else {
-                return redirect()->back()
-                    ->withInput()
-                    ->with('error', 'Failed to update user. Please try again.');
+                return redirect()->to('admin/users')->with('success', 'User updated successfully!');
             }
+
+            return redirect()->back()->withInput()->with('error', 'Failed to update user.');
         }
 
-        // For GET requests, show edit form
+        // --- If GET request, show form ---
         $data = [
             'title' => "Edit User",
             'user' => $user,
