@@ -13,9 +13,13 @@ class RegistrationModel extends Model
     protected $allowedFields = [
         'user_id',
         'event_id',
-        'created_at'
+        'certificate_ready', // <-- ADDED
+        'created_at',
+        'updated_at'
     ];
 
     // ✅ Disable automatic timestamps since we handle created_at manually
     protected $useTimestamps = false;
+    protected $createdField  = 'created_at';
+    protected $updatedField  = 'updated_at';
 }

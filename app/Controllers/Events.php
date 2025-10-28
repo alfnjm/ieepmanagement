@@ -40,13 +40,7 @@ class Events extends BaseController
     // ✅ Register for an event
     public function register($eventId)
     {
-        // 🔍 Step 1: Dump session for debugging (remove after testing)
-        // dd(session()->get());
-
-        // ✅ Use the correct key (based on your Auth controller)
-        // In your Auth.php → session()->set(['id' => $user['id'], ...])
-        // So we should use 'id' — not 'user_id' or 'student_id'
-        $userId = session()->get('user_id');
+        $userId = session()->get('id');
 
         // 🧩 Step 2: If not logged in, redirect
         if (!$userId) {
@@ -93,14 +87,34 @@ class Events extends BaseController
         return redirect()->to('/events')->with('success', 'Registration cancelled.');
     }
 
-    // 📄 Show event details
-    public function detail($eventId)
+    public function detail($id)
     {
-        $event = $this->eventModel->find($eventId);
-        if (!$event) {
-            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound("Event not found");
+        $eventModel = new \App\Models\EventModel();
+        $event = $eventModel->find($id);
+
+        if (empty($event) || $event['status'] !== 'approved') {
+            // Don't show pending or non-existent events
+            return redirect()->to('/')->with('error', 'Event not found.');
         }
 
-        return view('events/detail', ['event' => $event]);
+        $data['event'] = $event;
+
+        // We also check if the user is registered for it
+        $data['isRegistered'] = false;
+        if (session()->get('isLoggedIn')) {
+            $registrationModel = new \App\Models\RegistrationModel();
+            $userId = session()->get('id');            
+            $registration = $registrationModel
+                ->where('user_id', $userId)
+                ->where('event_id', $id)
+                ->first();
+            
+            if ($registration) {
+                $data['isRegistered'] = true;
+            }
+        }
+        
+        return view('events/detail', $data);
     }
+    
 }

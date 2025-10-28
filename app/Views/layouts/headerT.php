@@ -89,7 +89,7 @@
     <?php $session = session(); ?>
     <nav class="navbar navbar-expand-lg">
         <div class="container">
-            <a class="navbar-brand" href="<?= base_url('/') ?>">IEEP Management System</a>
+            <a class="navbar-brand text-white fw-bold" href="<?= session()->get('isLoggedIn') ? base_url(session()->get('role') . '/dashboard') : base_url('/') ?>">IEEP Management System</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -103,11 +103,17 @@
                                 👤 <?= esc($session->get('userName') ?? 'User') ?>
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end">
-                                <li><a class="dropdown-item" href="<?= base_url('user/dashboard') ?>">📊 Dashboard</a></li>
-                                <li><a class="dropdown-item" href="<?= base_url('user/profile') ?>">⚙️ Profile</a></li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item text-danger" href="<?= base_url('auth/logout') ?>">🚪 Logout</a></li>
-                            </ul>
+    <?php $role = $session->get('role'); ?>
+    
+    <li><a class="dropdown-item" href="<?= base_url($role . '/dashboard') ?>">📊 Dashboard</a></li>
+    
+    <?php if ($role === 'user'): ?>
+        <li><a class="dropdown-item" href="<?= base_url('user/profile') ?>">⚙️ Profile</a></li>
+    <?php endif; ?>
+    
+    <li><hr class="dropdown-divider"></li>
+    <li><a class="dropdown-item text-danger" href="<?= base_url('auth/logout') ?>">🚪 Logout</a></li>
+</ul>
                         </li>
                     <?php else: ?>
                         <!-- Logged Out Links -->

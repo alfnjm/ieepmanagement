@@ -89,23 +89,35 @@ class Coordinator extends BaseController
             return redirect()->back()->with('error', 'Proposal not found.');
         }
 
-        // 1. Prepare data for the live events table
-        // CRITICAL: Unset the ID so the EventModel inserts a NEW record.
-        unset($proposal['id']); 
-        
-        // Ensure status is set to 'approved' for the live table.
-        $proposal['status'] = 'approved'; 
+        // 1. Prepare data for the live events table (MAPPING FIX)
+        $eventData = [
+            // Mapped Fields
+            'title'              => $proposal['event_name'], 
+            'description'        => $proposal['event_description'], 
+            'thumbnail'          => $proposal['poster_image'], 
+            'date'               => $proposal['event_date'],
+            'location'           => $proposal['event_location'],
+            
+            // Directly Transferred Fields
+            'organizer_id'       => $proposal['organizer_id'],
+            'status'             => 'approved',
+            'time'               => $proposal['event_time'],
+            'program_start'      => $proposal['program_start'],
+            'program_end'        => $proposal['program_end'],
+            'eligible_semesters' => $proposal['eligible_semesters'],
+            'created_at'         => date('Y-m-d H:i:s'),
+            'updated_at'         => date('Y-m-d H:i:s'),
+        ];
 
         try {
-            // 2. Insert the proposal into the main events table (EventModel)
-            $eventModel->insert($proposal);
+            // 2. Insert the mapped data into the main events table (EventModel)
+            $eventModel->insert($eventData);
             
             // 3. Delete the record from the pending proposals table
             $proposalModel->delete($id);
 
             return redirect()->back()->with('success', 'Event approved and published to the main page successfully!');
         } catch (\Exception $e) {
-            // This catches the 'There is no data to insert' error if fields are mismatched.
             log_message('error', 'Event Approval Failed: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Failed to approve event due to a database error. Check logs and model fields.');
         }
@@ -134,14 +146,20 @@ class Coordinator extends BaseController
         return view('coordinator/registration_control', $data);
     }
 
-    // 📅 View Upcoming Events
     public function upcomingEvents()
     {
-        // Now fetches from the live events table
-        $eventModel = new EventModel();
-        $data['upcomingEvents'] = $eventModel->getApprovedEvents();
+        // 1. Fetch upcoming events (approved)
+        $eventModel = new \App\Models\EventModel();
 
+        // --- FIX ---
+        // Replaced getApprovedEvents() with a direct query for 'approved' status
+        $data['events'] = $eventModel
+            ->where('status', 'approved')
+            ->orderBy('date', 'ASC') // Show soonest events first
+            ->findAll();
+        // --- End Fix ---
+
+        // 2. Pass to the view
         return view('coordinator/upcoming_events', $data);
     }
-
 }

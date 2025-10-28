@@ -16,12 +16,15 @@ class EventModel extends Model
         'description', 
         'thumbnail', 
         'date', 
-        'time', // Assuming 'time' might also be a field in the proposal
         'location',
-        'organizer_id', // CRITICAL: Missing field from the proposal
-        'status', // CRITICAL: To save the 'approved' status
-        'created_at', // CRITICAL: Needed because $useTimestamps is true
-        'updated_at', // CRITICAL: Needed because $useTimestamps is true
+        'organizer_id', 
+        'status', 
+        'time', 
+        'program_start',      
+        'program_end',        
+        'eligible_semesters', 
+        'created_at', 
+        'updated_at',
     ];
 
     protected $useTimestamps = true;

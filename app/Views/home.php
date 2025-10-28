@@ -1,29 +1,43 @@
-<?= $this->include('layouts/headerT') ?>
+<?= $this->extend('layouts/headerT') ?>
+<?= $this->section('content') ?>
 
 <div class="container my-5">
-  <h1 class="mb-4">Upcoming Events</h1>
-  <div class="row">
-    <?php foreach($events as $event): ?>
-      <div class="col-md-4">
-        <div class="card mb-3">
-          <div class="card-body">
-            <h5 class="card-title"><?= esc($event['title']) ?></h5>
-            <p class="card-text"><?= esc($event['description']) ?></p>
-            <small class="text-muted"><?= esc($event['date']) ?></small><br>
+    </div>
 
-            <?php if(!session()->get('student_id')): ?>
-              <!-- kalau tak login, redirect ke login -->
-              <a href="<?= base_url('auth/register') ?>" class="btn btn-primary mt-2">Register</a>
+
+<div class="container px-4 py-5" id="custom-cards">
+    <h2 class="pb-2 border-bottom">Upcoming Events</h2>
+
+    <div class="row row-cols-1 row-cols-lg-3 align-items-stretch g-4 py-5">
+        
+        <?php if (empty($events)): ?>
             <?php else: ?>
-              <!-- kalau dah login, redirect ke event register -->
-              <a href="<?= base_url('events/register/'.$event['id']) ?>" class="btn btn-success mt-2">Register</a>
-            <?php endif; ?>
+            <?php foreach ($events as $event): ?>
+                <div class="col">
+                
+                    <a href="<?= base_url('event/' . $event['id']) ?>" 
+                       class="text-decoration-none">
+                       
+                        <div class="card card-cover h-100 overflow-hidden text-bg-dark rounded-4 shadow-lg" 
+                             style="background-image: url('<?= is_file(FCPATH.'uploads/posters/'.$event['thumbnail']) ? base_url('uploads/posters/'.$event['thumbnail']) : $event['thumbnail'] ?>'); background-size: cover; background-position: center;">
+                            
+                            <div class="d-flex flex-column h-100 p-5 pb-3 text-white text-shadow-1" style="background-color: rgba(0,0,0,0.5);">
+                                <h3 class="pt-5 mt-5 mb-4 display-6 lh-1 fw-bold"><?= esc($event['title']) ?></h3>
+                                <ul class="d-flex list-unstyled mt-auto">
+                                    <li class="me-auto">
+                                        <small>📅 <?= esc($event['date']) ?></small>
+                                    </li>
+                                    <li class="d-flex align-items-center">
+                                        <small>📍 <?= esc($event['location']) ?></small>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </a> 
+                    </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
 
-          </div>
-        </div>
-      </div>
-    <?php endforeach; ?>
-  </div>
+    </div>
 </div>
-
-<?= $this->include('layouts/footerT') ?>
+<?= $this->endSection() ?>

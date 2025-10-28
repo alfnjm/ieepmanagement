@@ -50,6 +50,8 @@ $routes->GET('events/detail/(:num)', 'Events::detail/$1');
 $routes->GET('events/register/(:num)', 'Events::register/$1');
 // Original: $routes->GET('/events/cancel/(:num)', 'Events::cancel/$1');
 $routes->GET('events/cancel/(:num)', 'Events::cancel/$1');
+// Add this line, preferably near your other public routes
+$routes->get('event/(:num)', 'Events::detail/$1');
 
 
 // $routes->group('admin', static function ($routes) {
@@ -77,6 +79,7 @@ $routes->get('coordinator/approve/(:num)', 'Coordinator::approve/$1');
 $routes->get('coordinator/reject/(:num)', 'Coordinator::reject/$1');
 $routes->get('coordinator/approveProposal/(:num)', 'Coordinator::approveProposal/$1');
 $routes->get('coordinator/rejectProposal/(:num)', 'Coordinator::rejectProposal/$1');
+$routes->match(['GET', 'POST'], 'coordinator/attendance', 'Coordinator::attendance');
 
 
 $routes->GET('organizer/dashboard', 'Organizer::dashboard');
@@ -84,5 +87,6 @@ $routes->get('organizer/create-event', 'Organizer::createEvent');
 $routes->get('organizer/my-proposals', 'Organizer::myProposals');
 $routes->get('organizer/participants', 'Organizer::participants');
 $routes->get('organizer/certificates', 'Organizer::certificates');
-$routes->get('organizer/attendance', 'Organizer::attendance');
+$routes->match(['GET', 'POST'], 'organizer/attendance', 'Organizer::attendance');
 $routes->post('organizer/submitProposal', 'Organizer::submitProposal');
+$routes->get('organizer/view-certificate/(:num)', 'Organizer::viewCertificate/$1');

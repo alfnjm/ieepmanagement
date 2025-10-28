@@ -4,25 +4,28 @@ namespace App\Controllers;
 
 use App\Models\EventModel;
 use App\Models\RegistrationModel;
-use App\Models\UserModel; // <--- ADDED THIS LINE
+use App\Models\UserModel; 
 
 class User extends BaseController
 {
     public function dashboard()
     {
-
         $eventModel = new EventModel();
         $registrationModel = new RegistrationModel();
 
         $userId = session()->get('id');
 
-        // Note: Ideally, this should use EventModel::getApprovedEvents()
+        // Fetch all events
         $events = $eventModel->findAll(); 
-        $userRegs = $registrationModel->where('user_id', $userId)->findAll();
-
+        
         $registeredEvents = [];
-        foreach ($userRegs as $reg) {
-            $registeredEvents[$reg['event_id']] = $reg;
+        if ($userId) {
+             // Fetch all registration records, including certificate_ready status
+            $userRegs = $registrationModel->where('user_id', $userId)->findAll();
+            foreach ($userRegs as $reg) {
+                // Store the whole registration record for certificate check on dashboard
+                $registeredEvents[$reg['event_id']] = $reg;
+            }
         }
 
         return view('user/dashboard', [
@@ -35,15 +38,15 @@ class User extends BaseController
     {
         $session = session();
 
-        // ✅ Check if user is logged in
+        // Check if user is logged in
         if (!$session->has('id')) {
             return redirect()->to('/auth/login')->with('error', 'Please log in first.');
         }
 
-        $userId = $session->get('id'); // now guaranteed to exist
+        $userId = $session->get('id'); 
         $registrationModel = new RegistrationModel();
 
-        // ✅ Optional: prevent duplicate registrations
+        // Prevent duplicate registrations
         $existing = $registrationModel
             ->where('user_id', $userId)
             ->where('event_id', $eventId)
@@ -55,24 +58,95 @@ class User extends BaseController
                 ->with('info', 'You are already registered for this event.');
         }
 
-        // ✅ Insert registration
+        // Insert registration
         $registrationModel->insert([
             'user_id'    => $userId,
             'event_id'   => $eventId,
-            'created_at' => date('Y-m-d H:i:s'),
+            // 'certificate_ready' defaults to 0 in the database
+            'created_at' => date('Y-m-d H:i:s'), 
         ]);
 
         return redirect()
             ->to('user/dashboard')
             ->with('success', 'Successfully registered for the event.');
     }
-
-    public function printCertificate($eventId)
+    
+    // NEW: User views list of completed events for certificate download
+    public function certificates()
     {
-        return "Certificate printing for event ID: " . $eventId;
+        $session = session();
+        if (!$session->has('id')) {
+            return redirect()->to('/auth/login')->with('error', 'Please log in first.');
+        }
+
+        $userId = $session->get('id');
+        $db = \Config\Database::connect();
+
+        // Join registrations with events to list only events the user is registered for AND attended
+        $registrations = $db->table('registrations')
+            ->select('registrations.event_id, registrations.certificate_ready, events.title, events.date')
+            ->join('events', 'events.id = registrations.event_id')
+            ->where('registrations.user_id', $userId)
+            // Filter for only events where attendance (certificate_ready) is marked as 1 (true)
+            ->where('registrations.certificate_ready', 1) 
+            ->get()
+            ->getResultArray();
+
+        return view('user/certificates', [
+            'title' => 'My Certificates',
+            'certificates' => $registrations,
+        ]);
     }
 
-    // Change index to editProfile for clarity, or leave as index() if the route maps to it
+    // COMPLETE FIX: Print certificate logic (replaces the stub)
+    public function printCertificate($eventId)
+    {
+        $session = session();
+        if (!$session->has('id')) {
+            return redirect()->to('/auth/login')->with('error', 'Please log in first.');
+        }
+
+        $userId = $session->get('id');
+        $userModel = new UserModel();
+        $eventModel = new EventModel();
+        $registrationModel = new RegistrationModel();
+
+        // 1. Check Registration and Attendance
+        $registration = $registrationModel
+            ->where('user_id', $userId)
+            ->where('event_id', $eventId)
+            ->first();
+
+        if (empty($registration) || $registration['certificate_ready'] != 1) {
+            return redirect()
+                ->to('user/certificates')
+                ->with('error', 'Certificate not available. Attendance must be marked by the organizer.');
+        }
+
+        // 2. Fetch User and Event Details
+        $user = $userModel->find($userId);
+        $event = $eventModel->find($eventId);
+
+        if (empty($user) || empty($event)) {
+             return redirect()->back()->with('error', 'User or Event data missing for certificate.');
+        }
+
+        // 3. Render Certificate View
+        $data = [
+            'userName' => $user['name'],
+            // Use 'student_id' as the custom ID for the certificate, falling back to database ID
+            'userId' => $user['student_id'] ?? $user['id'], 
+            'eventTitle' => $event['title'],
+            'eventDate' => $event['date'],
+            // Assuming 'cert.png' is in 'public/images/' as suggested by file list
+            'certImagePath' => base_url('images/cert.png')
+        ];
+
+        // Renders the HTML template which is styled to look like a certificate and can be printed to PDF by the browser
+        return view('user/certificate_view', $data);
+    }
+    
+    // ** Unchanged methods below **
     public function editProfile() 
     {
         $session = session();
@@ -81,17 +155,13 @@ class User extends BaseController
             return redirect()->to('/auth/login');
         }
 
-        // You MUST pass the $user data to the view for it to work.
-        // Assuming you have a UserModel to fetch user data:
-        // Changed instantiation to use the 'use App\Models\UserModel' statement added above
         $userModel = new UserModel(); 
-        $userId = $session->get('id'); // Assuming you store id in session
+        $userId = $session->get('id'); 
         $user = $userModel->find($userId);
 
-        return view('user/profile', [ // Adjusted view path
+        return view('user/profile', [ 
             'title' => 'Edit Profile',
-            'user' => $user, // Pass the user data array
-            // 'validation' => \Config\Services::validation() // Might be needed for validation
+            'user' => $user, 
         ]);
     }
 
@@ -104,11 +174,10 @@ class User extends BaseController
         }
 
         $userId = $session->get('id');
-        $userModel = new UserModel(); // <--- This now correctly resolves due to the added 'use' statement
+        $userModel = new UserModel(); 
 
         // 1. Define Validation Rules
         $rules = [
-            // 'name' validation rule removed to prevent user changing their name
             'email' => "required|max_length[255]|valid_email|is_unique[users.email,id,{$userId}]",
             'phone' => 'required|max_length[15]',
             'class' => 'required|max_length[50]',
@@ -122,33 +191,28 @@ class User extends BaseController
 
         // 2. Validate the Request
         if (!$this->validate($rules)) {
-            // Failed validation: reload the form with errors and old input
-            $user = $userModel->find($userId); // Fetch current data again to populate the form
+            $user = $userModel->find($userId); 
             return view('user/profile', [
                 'validation' => $this->validator,
-                'user' => $user // Pass user data back
+                'user' => $user 
             ]);
         }
 
         // 3. Prepare Data for Update
         $data = [
-            // 'name' is intentionally excluded from $data
             'email' => $this->request->getPost('email'),
             'phone' => $this->request->getPost('phone'),
             'class' => $this->request->getPost('class'),
-            // 'updated_at' is handled automatically by the model if $useTimestamps is true
         ];
 
         // Handle Password Update (only if a new password was provided)
         $newPassword = $this->request->getPost('password');
         if (!empty($newPassword)) {
-            // FIX: Pass the RAW password. The UserModel's 'hashPassword' callback will handle hashing it once.
             $data['password'] = $newPassword; 
         }
 
         // 4. Update the User Record
         if ($userModel->update($userId, $data)) {
-            // Update session data (name session update removed)
             $session->set('userEmail', $data['email']);
 
             return redirect()->to('user/profile')->with('success', 'Profile updated successfully!');
