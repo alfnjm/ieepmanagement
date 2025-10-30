@@ -37,8 +37,8 @@ $routes->group('user', function ($routes) {
     $routes->post('updateProfile', 'User::updateProfile'); 
     // 4. Event Registration: Maps GET /user/registerEvent/5 -> User::registerEvent(5)
     $routes->get('registerEvent/(:num)', 'User::registerEvent/$1');
-    // 5. Certificate Printing: Maps GET /user/printCertificate/5 -> User::printCertificate(5)
-    $routes->get('printCertificate/(:num)', 'User::printCertificate/$1');
+    // 5. Certificate Download: Maps GET /user/downloadCertificate/5 -> User::downloadCertificate(5)
+    $routes->get('downloadCertificate/(:num)', 'User::downloadCertificate/$1'); 
 });
 
 // Events: REMOVED leading slashes for consistency
@@ -80,13 +80,20 @@ $routes->get('coordinator/reject/(:num)', 'Coordinator::reject/$1');
 $routes->get('coordinator/approveProposal/(:num)', 'Coordinator::approveProposal/$1');
 $routes->get('coordinator/rejectProposal/(:num)', 'Coordinator::rejectProposal/$1');
 $routes->match(['GET', 'POST'], 'coordinator/attendance', 'Coordinator::attendance');
+$routes->get('coordinator/certificates', 'Coordinator::certificates', ['filter' => 'coordinator']);
+$routes->get('coordinator/publish_certificates/(:num)', 'Coordinator::publish_certificates/$1', ['filter' => 'coordinator']);
 
 
 $routes->GET('organizer/dashboard', 'Organizer::dashboard');
 $routes->get('organizer/create-event', 'Organizer::createEvent');
 $routes->get('organizer/my-proposals', 'Organizer::myProposals');
-$routes->get('organizer/participants', 'Organizer::participants');
+//$routes->get('organizer/participants', 'Organizer::participants');
 $routes->get('organizer/certificates', 'Organizer::certificates');
 $routes->match(['GET', 'POST'], 'organizer/attendance', 'Organizer::attendance');
 $routes->post('organizer/submitProposal', 'Organizer::submitProposal');
 $routes->get('organizer/view-certificate/(:num)', 'Organizer::viewCertificate/$1');
+$routes->get('organizer/participants', 'Organizer::participants');
+$routes->match(['get', 'post'], 'organizer/attendance', 'Organizer::attendance');
+$routes->match(['get', 'post'], 'organizer/templates', 'Organizer::templates');
+
+

@@ -4,6 +4,10 @@ namespace App\Controllers;
 
 use App\Models\PendingProposalModel;
 use CodeIgniter\Controller;
+use App\Models\RegistrationModel;
+use setasign\Fpdi\Fpdi;
+use setasign\Fpdi\PdfReader;
+use App\Models\CertificateTemplateModel;
 
 class Organizer extends BaseController
 {
@@ -116,27 +120,25 @@ class Organizer extends BaseController
     {
         $organizerId = session()->get('id');
         $db = \Config\Database::connect();
-        $eventModel = new \App\Models\EventModel(); 
 
-        // 1. Get organizer's events
-        $organizerEvents = $eventModel->where('organizer_id', $organizerId)->findAll();
-        $eventIds = array_column($organizerEvents, 'id');
+        // ✅ Build the query consistently
+        $builder = $db->table('registrations');
+        $builder->select('
+            registrations.id as reg_id, 
+            users.name as user_name, 
+            users.student_id, 
+            events.title as event_name
+        ');
+        $builder->join('users', 'users.id = registrations.user_id');
+        $builder->join('events', 'events.id = registrations.event_id');
+        
+        // --- Add ALL the correct filters ---
+        $builder->where('events.organizer_id', $organizerId);
+        $builder->where('events.status', 'approved'); 
+        $builder->where('registrations.is_attended', 1); 
+        // ------------------------------------
 
-        if (empty($eventIds)) {
-            $data['certificates_issued'] = [];
-            return view('organizer/certificates', $data);
-        }
-
-        // 2. Get registrations for these events WHERE attendance was marked
-        $certificates_issued = $db->table('registrations')
-            // Select the registration ID for the link
-            ->select('registrations.id as reg_id, users.name as user_name, users.student_id, events.title as event_name')
-            ->join('users', 'users.id = registrations.user_id')
-            ->join('events', 'events.id = registrations.event_id')
-            ->whereIn('registrations.event_id', $eventIds)
-            ->where('registrations.certificate_ready', 1) // <-- The key filter
-            ->get()
-            ->getResultArray();
+        $certificates_issued = $builder->get()->getResultArray();
 
         $data['certificates_issued'] = $certificates_issued;
         return view('organizer/certificates', $data);
@@ -152,133 +154,281 @@ class Organizer extends BaseController
 
         $db = \Config\Database::connect();
 
-        // 1. Get registration details and verify organizer ownership
+        // 1️⃣ Get registration + verify ownership
         $registration = $db->table('registrations')
-            ->select('registrations.*, events.organizer_id')
+            ->select('registrations.*, events.organizer_id, events.title AS event_title, events.date AS event_date, users.name AS user_name, users.student_id')
             ->join('events', 'events.id = registrations.event_id')
+            ->join('users', 'users.id = registrations.user_id')
             ->where('registrations.id', $registrationId)
             ->get()
             ->getRowArray();
 
-        // 2. Security Check:
-        //    - Does registration exist?
-        //    - Does this event belong to this organizer?
-        //    - Is the certificate actually ready?
         if (empty($registration) || $registration['organizer_id'] != $organizerId) {
             return redirect()->to('organizer/certificates')->with('error', 'You do not have permission to view this certificate.');
         }
-        if ($registration['certificate_ready'] != 1) {
-            return redirect()->to('organizer/certificates')->with('error', 'This certificate is not yet ready.');
+
+        // Cleaned 'if' check:
+        if ($registration['is_attended'] != 1) { 
+            return redirect()->to('organizer/certificates')->with('error', 'This certificate is not yet ready (participant did not attend).');
         }
 
-        // 3. Fetch User and Event Details
-        $userModel = new \App\Models\UserModel();
-        $eventModel = new \App\Models\EventModel();
-        
-        $user = $userModel->find($registration['user_id']);
-        $event = $eventModel->find($registration['event_id']);
+        // 2️⃣ Generate PDF file if not yet generated
+        if (empty($registration['certificate_path']) || !file_exists($registration['certificate_path'])) {
+            $filePath = $this->_generateCertificate(
+                ['name' => $registration['user_name'], 'id' => $registration['user_id']],
+                ['title' => $registration['event_title'], 'date' => $registration['event_date'], 'id' => $registration['event_id']]
+            );
 
-        if (empty($user) || empty($event)) {
-            return redirect()->back()->with('error', 'User or Event data missing.');
+            if ($filePath) {
+                $db->table('registrations')
+                    ->where('id', $registrationId)
+                    ->update(['certificate_path' => $filePath]);
+            }
+        } else {
+            $filePath = $registration['certificate_path'];
         }
 
-        // 4. Render the *same* certificate view as the student
-        $data = [
-            'userName' => $user['name'],
-            'userId' => $user['student_id'] ?? $user['id'], 
-            'eventTitle' => $event['title'],
-            'eventDate' => $event['date'],
-            // Assumes 'cert.png' is in 'public/images/'
-            'certImagePath' => base_url('images/cert.png') 
-        ];
-        
-        // We reuse the student's certificate template
-        return view('user/certificate_view', $data);
+        // 3️⃣ Stream certificate to browser
+        return $this->response
+            ->setHeader('Content-Type', 'application/pdf')
+            ->setHeader('Content-Disposition', 'inline; filename="certificate.pdf"')
+            ->setBody(file_get_contents($filePath));
     }
 
     public function attendance()
     {
-    // ... (omitted security/login check)
-    $organizerId = session()->get('id'); 
-    $db = \Config\Database::connect();
-    $registrationModel = new \App\Models\RegistrationModel();
-    $eventModel = new \App\Models\EventModel(); 
-    
-    // Handle POST request to update attendance
-    if ($this->request->getMethod() === 'post') {
-        $formData = $this->request->getPost();
-        $updates = $formData['updates'] ?? []; // Array of 'user_id_event_id' values checked
+        $db = \Config\Database::connect();
+        $registrationModel = new \App\Models\RegistrationModel();
+        $organizerId = session()->get('id');
 
-        // Fetch all registrations for this organizer's events to find those to unset.
-        $organizerEvents = $eventModel->where('organizer_id', $organizerId)->findAll();
-        $eventIds = array_column($organizerEvents, 'id');
-        
-        if (!empty($eventIds)) {
-            $allRegs = $registrationModel->whereIn('event_id', $eventIds)->findAll();
+        // ✅ Step 1: Fetch participants (using 'is_attended')
+        $builder = $db->table('registrations');
+        $builder->select('
+            registrations.id AS reg_id,
+            users.name,
+            users.student_id,
+            events.title AS event_title,
+            events.date AS event_date,
+            registrations.is_attended
+        ');
+        $builder->join('users', 'users.id = registrations.user_id');
+        $builder->join('events', 'events.id = registrations.event_id');
+        $builder->where('events.organizer_id', $organizerId);
+        $builder->where('events.status', 'approved');
+        $participants = $builder->get()->getResultArray();
 
-            foreach ($allRegs as $reg) {
-                $uniqueKey = $reg['user_id'] . '_' . $reg['event_id'];
-                $isAttended = in_array($uniqueKey, $updates) ? 1 : 0;
-                
-                // Only update if status has changed
-                if ((int)$reg['certificate_ready'] !== $isAttended) {
-                    $registrationModel->update($reg['id'], ['certificate_ready' => $isAttended]);
-                }
+        // ✅ Step 2: If POST, update attendance (using 'is_attended')
+        if ($this->request->getMethod() === 'post') {
+            $attendanceData = $this->request->getPost('attendance') ?? [];
+
+            foreach ($participants as $participant) {
+                $registrationId = $participant['reg_id'];
+                $attended = isset($attendanceData[$registrationId]) ? 1 : 0;
+
+                // 🧠 Use direct query builder update
+                $db->table('registrations')
+                    ->where('id', $registrationId)
+                    ->update(['is_attended' => $attended]); 
             }
+
+            return redirect()->to('organizer/attendance')
+                            ->with('success', 'Attendance updated successfully.');
         }
+
+        // ✅ Step 3: Display the attendance view
+        return view('organizer/attendance', [
+            'participants' => $participants
+        ]);
+    }
+
+    private function _generateCertificate($user, $event)
+    {
+        if (!class_exists('setasign\Fpdi\Fpdi')) {
+            log_message('error', 'FPDI library not installed. Run: composer require setasign/fpdi');
+            return false;
+        }
+
+        // --- DYNAMIC TEMPLATE ---
+        // 1. Get the event's chosen template ID (you need to make sure this is passed in)
+        // You might need to fetch the event from the DB again to get its 'certificate_template_id'
+        $db = \Config\Database::connect();
+        $eventData = $db->table('events')->where('id', $event['id'])->get()->getRowArray();
+        $templateId = $eventData['certificate_template_id'] ?? null;
         
-        return redirect()->to('organizer/attendance')->with('success', 'Attendance updated successfully.');
-    }
+        // 2. Get the template details (path and coordinates)
+        $template = $this->_getTemplateDetails($templateId);
 
-    // Fetch the organizer's *approved* events first
-    $organizerEvents = $eventModel->where('organizer_id', $organizerId)->findAll();
-    $eventIds = array_column($organizerEvents, 'id');
-    
-    if (empty($eventIds)) {
-        $data['participants'] = [];
-        return view('organizer/attendance', $data);
-    }
+        $templatePath = $template['template_path'];
+        // --- END DYNAMIC TEMPLATE ---
 
-    // Fetch registrations for these events, joining with user data
-    $participants = $db->table('registrations')
-                       ->select('registrations.id, registrations.user_id, registrations.event_id, registrations.certificate_ready, users.name as user_name, users.student_id, events.title as event_name')
-                       ->join('users', 'users.id = registrations.user_id')
-                       ->join('events', 'events.id = registrations.event_id')
-                       ->whereIn('registrations.event_id', $eventIds)
-                       ->get()
-                       ->getResultArray();
+        if (!file_exists($templatePath)) {
+            log_message('error', 'Certificate template not found: ' . $templatePath);
+            return false;
+        }
 
-    $data['participants'] = $participants;
-    return view('organizer/attendance', $data);
+        // Ensure certificate folder exists
+        $outputDir = WRITEPATH . 'uploads/certificates/';
+        if (!is_dir($outputDir)) {
+            mkdir($outputDir, 0777, true);
+        }
+
+        $pdf = new Fpdi();
+        $pdf->setSourceFile($templatePath);
+        $tplId = $pdf->importPage(1);
+        $pdf->AddPage();
+        $pdf->useTemplate($tplId, 0, 0, 210);
+
+        // Set font and text positions
+        $pdf->SetFont('helvetica', 'B', 18);
+        $pdf->SetTextColor(0, 0, 0);
+
+        // Name (Use dynamic coordinates from $template)
+        $pdf->SetXY($template['name_x'], $template['name_y']);
+        $pdf->Write(0, strtoupper($user['name']));
+
+        // Event Title
+        $pdf->SetFont('helvetica', '', 14);
+        $pdf->SetXY($template['event_x'], $template['event_y']);
+        $pdf->Write(0, 'for attending "' . $event['title'] . '"');
+
+        // Event Date
+        $pdf->SetXY($template['date_x'], $template['date_y']);
+        $pdf->Write(0, 'Date: ' . date('F j, Y', strtotime($event['date'])));
+
+        // Save PDF
+        $fileName = 'CERT_' . $event['id'] . '_' . $user['id'] . '.pdf';
+        $filePath = $outputDir . $fileName;
+        $pdf->Output($filePath, 'F');
+
+        return $filePath;
     }
 
     public function participants()
     {
-        $organizerId = session()->get('id'); 
-        $db = \Config\Database::connect();
-        $eventModel = new \App\Models\EventModel(); 
-
-        // 1. Fetch the organizer's *approved* events first
-        $organizerEvents = $eventModel->where('organizer_id', $organizerId)->findAll();
-        $eventIds = array_column($organizerEvents, 'id');
-        
-        if (empty($eventIds)) {
-            // If the organizer has no events, send an empty array
-            $data['participants'] = [];
-            return view('organizer/participants', $data);
+        $organizerId = session()->get('id');
+        if (!$organizerId) {
+            return redirect()->to('/auth/login')->with('error', 'Please log in first.');
         }
 
-        // 2. Fetch registrations for these events, joining with user and event data
-        $participants = $db->table('registrations')
-                           ->select('registrations.id, users.name as user_name, users.student_id, users.email, events.title as event_name')
-                           ->join('users', 'users.id = registrations.user_id')
-                           ->join('events', 'events.id = registrations.event_id')
-                           ->whereIn('registrations.event_id', $eventIds)
-                           ->get()
-                           ->getResultArray();
+        $db = \Config\Database::connect();
 
-        // 3. Pass the data to the view
-        $data['participants'] = $participants;
-        return view('organizer/participants', $data);
+        $builder = $db->table('registrations');
+        $builder->select('
+            registrations.id AS reg_id,
+            events.title AS event_title,
+            users.name AS participant_name,
+            users.student_id,
+            users.email,
+            events.date AS event_date
+        ');
+        $builder->join('events', 'events.id = registrations.event_id');
+        $builder->join('users', 'users.id = registrations.user_id');
+        $builder->where('events.organizer_id', $organizerId);
+        $builder->where('registrations.is_attended', 1); 
+        $builder->where('events.status', 'approved');
+
+        $participants = $builder->get()->getResultArray();
+
+        return view('organizer/participants', ['participants' => $participants]);
     }
+
+    public function templates()
+    {
+        $templateModel = new \App\Models\CertificateTemplateModel();
+        $organizerId = session()->get('id');
+
+        // Handle the template upload
+        if ($this->request->getMethod() === 'post') {
+            
+            // --- ERROR CHECK 1: Check session ---
+            if (!$organizerId) {
+                return redirect()->to('organizer/templates')->with('error', 'Your session expired. Please log in and try again.');
+            }
+
+            $file = $this->request->getFile('template_file');
+
+            // --- ERROR CHECK 2: Validate file ---
+            if (!$file || !$file->isValid()) {
+                $error = $file ? $file->getErrorString() : 'No file was selected.';
+                return redirect()->to('organizer/templates')->with('error', 'File Error: ' . $error);
+            }
+
+            if ($file->hasMoved()) {
+                return redirect()->to('organizer/templates')->with('error', 'File has already been moved.');
+            }
+
+            // --- ERROR CHECK 3: Check/Create Directory ---
+            $templateDir = WRITEPATH . 'templates';
+            if (!is_dir($templateDir)) {
+                // Try to create it
+                if (!mkdir($templateDir, 0777, true)) {
+                    return redirect()->to('organizer/templates')->with('error', 'Failed to create templates directory in writable folder.');
+                }
+            }
+
+            if (!is_writable($templateDir)) {
+                 return redirect()->to('organizer/templates')->with('error', 'The directory writable/templates is not writable.');
+            }
+
+            $fileName = $file->getRandomName();
+
+            // --- ERROR CHECK 4: Move file ---
+            if (!$file->move($templateDir, $fileName)) {
+                return redirect()->to('organizer/templates')->with('error', 'Failed to move the uploaded file.');
+            }
+
+            // --- All checks passed, NOW insert into DB ---
+            try {
+                $templateModel->insert([
+                    'organizer_id'   => $organizerId, // Use the checked ID
+                    'template_name'  => $this->request->getPost('template_name'),
+                    'template_path'  => $fileName,
+                    'name_x'         => $this->request->getPost('name_x'),
+                    'name_y'         => $this->request->getPost('name_y'),
+                    'event_x'        => $this->request->getPost('event_x'),
+                    'event_y'        => $this->request->getPost('event_y'),
+                    'date_x'         => $this->request->getPost('date_x'),
+                    'date_y'         => $this->request->getPost('date_y'),
+                ]);
+            } catch (\Exception $e) {
+                // Log the real error for you to see
+                log_message('error', '[Template Upload] ' . $e->getMessage());
+                // Delete the orphaned file
+                unlink($templateDir . '/' . $fileName);
+                return redirect()->to('organizer/templates')->with('error', 'Database error. Could not save template.');
+            }
+
+            return redirect()->to('organizer/templates')->with('success', 'Template uploaded successfully!');
+        }
+
+        // Get all existing templates for the view
+        $data['templates'] = $templateModel->where('organizer_id', $organizerId)->findAll();
+        return view('organizer/templates', $data);
+    }
+
+    // --- ADD THIS HELPER FUNCTION ---
+    // Helper to get template details (or default)
+    private function _getTemplateDetails($templateId)
+    {
+        if ($templateId) {
+            $templateModel = new \App\Models\CertificateTemplateModel();
+            $template = $templateModel->find($templateId);
+            if ($template) {
+                $template['template_path'] = WRITEPATH . 'templates/' . $template['template_path'];
+                return $template;
+            }
+        }
+
+        // Return default values if no template is found
+        return [
+            'template_path' => WRITEPATH . 'templates/example_cert.pdf',
+            'name_x'        => 60,
+            'name_y'        => 120,
+            'event_x'       => 60,
+            'event_y'       => 150,
+            'date_x'        => 60,
+            'date_y'        => 160,
+        ];
+    }
+
 }

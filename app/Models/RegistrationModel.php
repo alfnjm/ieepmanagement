@@ -15,7 +15,8 @@ class RegistrationModel extends Model
         'event_id',
         'certificate_ready', // <-- ADDED
         'created_at',
-        'updated_at'
+        'updated_at',
+        'certificate_path'
     ];
 
     // ✅ Disable automatic timestamps since we handle created_at manually

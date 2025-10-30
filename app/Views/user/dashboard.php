@@ -54,30 +54,42 @@
                 <img src="<?= is_file(FCPATH.'uploads/posters/'.$event['thumbnail']) 
                             ? base_url('uploads/posters/'.$event['thumbnail']) 
                             : $event['thumbnail'] ?>" 
-                    class="card-img-top" 
-                    alt="Event Thumbnail"
-                    style="height: 200px; object-fit: cover;">
+                     class="card-img-top" 
+                     alt="Event Thumbnail"
+                     style="height: 200px; object-fit: cover;">
             <?php endif; ?>
             <div class="card-body">
                 <h5 class="card-title"><?= esc($event['title']) ?></h5>
-                <p class="card-text" style="min-height: 4.5em;"><?= esc(mb_strimwidth($event['description'], 0, 100, "...")) ?></p>
+                <p class="card-text" ...><?= esc(mb_strimwidth($event['description'] ?? '', 0, 100, "...")) ?></p>
                 <small class="text-muted"><?= esc($event['date']) ?> @ <?= esc($event['location']) ?></small><br>
 
-                <?php if(isset($registeredEvents[$event['id']])): ?>
+                <?php 
+                // --- START OF FIXED SECTION ---
+                if(isset($registeredEvents[$event['id']])): 
+                    // Get the specific registration details
+                    $reg = $registeredEvents[$event['id']]; 
+                ?>
                 
-                    <?php if($registeredEvents[$event['id']]['certificate_ready'] == 1): ?>
-                        <a href="<?= base_url('user/printCertificate/'.$event['id']) ?>" 
-                        class="btn btn-success btn-sm mt-2" target="_blank">
+                    <?php // Check if certificate is PUBLISHED
+                    if($reg['certificate_published'] == 1 && !empty($reg['certificate_path'])): ?>
+                        <a href="<?= base_url('user/downloadCertificate/'.$event['id']) ?>" 
+                           class="btn btn-success btn-sm mt-2">
                             Download Certificate 
                         </a>
-                    <?php else: ?>
-                        <span class="badge bg-primary mt-2">Registered (Attendance Pending)</span>
+                    <?php // Check if user ATTENDED (ready=1) but cert is NOT published yet
+                    elseif ($reg['certificate_ready'] == 1): ?>
+                        <span class="badge bg-warning text-dark mt-2">Attended (Pending Publication)</span>
+                    <?php // User is registered but attendance not marked
+                    else: ?>
+                        <span class="badge bg-primary mt-2">Registered</span>
                     <?php endif; ?>
 
                 <?php else: ?>
                     <a href="<?= base_url('user/registerEvent/'.$event['id']) ?>" 
                         class="btn btn-primary btn-sm mt-2">Register</a>
-                <?php endif; ?>
+                <?php endif; 
+                // --- END OF FIXED SECTION ---
+                ?>
                 </div>
             </div>
         </div>

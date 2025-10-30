@@ -5,6 +5,8 @@
 
 <?php if (session()->getFlashdata('success')): ?>
     <div class="alert alert-success"><?= session()->getFlashdata('success') ?></div>
+<?php elseif (session()->getFlashdata('message')): ?>
+    <div class="alert alert-info"><?= session()->getFlashdata('message') ?></div>
 <?php endif; ?>
 
 <form method="post" action="<?= base_url('organizer/attendance') ?>">
@@ -29,20 +31,18 @@
                     <?php foreach ($participants as $p): ?>
                         <tr>
                             <td><?= $i++ ?></td>
-                            <td><?= esc($p['event_name']) ?></td>
-                            <td><?= esc($p['user_name']) ?></td>
+                            <td><?= esc($p['event_title']) ?></td> 
+                            <td><?= esc($p['name']) ?></td>
                             <td><?= esc($p['student_id'] ?? 'N/A') ?></td>
                             <td>
-                                <input type="hidden" name="user_id[]" value="<?= esc($p['user_id']) ?>">
-                                <input type="hidden" name="event_id[]" value="<?= esc($p['event_id']) ?>">
-
                                 <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" role="switch" 
-                                           name="attendance[]" 
-                                           id="att-<?= esc($p['id']) ?>" 
-                                           value="<?= esc($p['user_id'] . '_' . $p['event_id']) ?>"
-                                           <?= $p['certificate_ready'] == 1 ? 'checked' : '' ?>>
-                                    <label class="form-check-label" for="att-<?= esc($p['id']) ?>">Mark Attended</label>
+                                    <input class="form-check-input" 
+                                        type="checkbox" 
+                                        role="switch" 
+                                        name="attendance[<?= esc($p['reg_id']) ?>]" 
+                                        id="att-<?= esc($p['reg_id']) ?>" 
+                                        value="1"
+                                        <?= $p['is_attended'] == 1 ? 'checked' : '' ?>> <label class="form-check-label" for="att-<?= esc($p['reg_id']) ?>">Mark Attended</label>
                                 </div>
                             </td>
                         </tr>

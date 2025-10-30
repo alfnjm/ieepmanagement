@@ -1,80 +1,129 @@
-
-  <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title><?= $title ?? 'IEEP Management System' ?></title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <style>
-    :root {
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale-1.0">
+    <title><?= $title ?? 'IEEP Management System' ?></title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    
+    <style>
+        :root {
             --color-primary: #3b82f6; /* Corporate Blue */
-            --color-primary-dark: #2563eb;
             --color-text-dark: #1f2937; /* Dark Gray */
-            --color-bg-light: #ffffff;
-            --color-nav-bg: #374151; /* Slate Gray for Navbar */
+            --color-bg-light: #f8fafc; /* Light gray page background */
         }
-        
+
         body {
-            background-color: #f3f4f6; /* Light background */
-            min-height: 100vh;
+            background-color: var(--color-bg-light);
             display: flex;
             flex-direction: column;
+            min-height: 100vh;
             font-family: 'Inter', 'Segoe UI', sans-serif;
             color: var(--color-text-dark);
         }
-        
-    .navbar {
-            background-color: var(--color-nav-bg);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+        .navbar {
+            background-color: #ffffff;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
         }
-        
+
         .navbar-brand {
-            color: #fff !important;
+            color: var(--color-primary) !important;
             font-weight: 700 !important;
             font-size: 1.25rem;
         }
-        
-        .nav-item .btn-nav {
-            background-color: var(--color-primary);
-            color: #fff !important;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
+
+        .navbar .nav-link {
+            color: #334155;
+            font-weight: 500;
+        }
+
+        .navbar .nav-link.active {
+            color: var(--color-primary);
             font-weight: 600;
-            margin-left: 10px;
-            transition: background-color 0.2s, box-shadow 0.2s;
+        }
+
+        .content-wrapper {
+            flex: 1; /* Makes the content area grow to fill space */
+            padding: 2rem;
         }
         
-        .nav-item .btn-nav:hover {
-            background-color: var(--color-primary-dark);
-            box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+        @media (max-width: 768px) {
+            .content-wrapper {
+                padding: 1rem;
+            }
         }
-    .content {
-      flex: 1;
-      padding: 30px;
-    }
-  </style>
+
+        .footer {
+            background-color: #ffffff;
+            color: #475569;
+            padding: 1rem 2rem;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+            font-size: 0.9rem;
+        }
+    </style>
 </head>
 <body>
-  <nav class="navbar navbar-expand-lg">
-    <div class="container">
-<a class="navbar-brand text-white fw-bold" href="<?= session()->get('isLoggedIn') ? base_url(session()->get('role') . '/dashboard') : base_url('/') ?>">IEEP Management System</a>      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-        <span class="navbar-toggler-icon"></span>
-      </button>
-      <div class="collapse navbar-collapse" id="navbarNav">
-        <ul class="navbar-nav ms-auto">
-          <li class="nav-item">
-            <a class="btn btn-nav" href="<?= base_url('auth/logout') ?>">Logout</a>
-          </li>
-          <li class="nav-item">
-            <a class="btn btn-nav" href="<?= base_url('user/profile') ?>">Profile</a>
-          </li>
-        </ul>
-      </div>
-    </div>
-  </nav>
-</body>
-</html>
 
+    <nav class="navbar navbar-expand-lg sticky-top">
+        <div class="container">
+            <a class="navbar-brand" href="<?= base_url('user/dashboard') ?>">IEEP Management</a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item">
+                        <a class="nav-link <?= (uri_string() == 'user/dashboard') ? 'active' : '' ?>" href="<?= base_url('user/dashboard') ?>">
+                            <i class="bi bi-grid-fill"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link <?= (uri_string() == 'user/certificates') ? 'active' : '' ?>" href="<?= base_url('user/certificates') ?>">
+                            <i class="bi bi-patch-check-fill"></i> My Certificates
+                        </a>
+                    </li>
+                </ul>
+
+                <ul class="navbar-nav ms-auto d-flex align-items-center">
+                    <?php if (session()->get('isLoggedIn')): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="<?= base_url('user/profile') ?>">
+                                <i class="bi bi-person-circle"></i> <?= esc(session()->get('name')) ?>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="btn btn-outline-danger btn-sm ms-lg-2 mt-2 mt-lg-0" href="<?= base_url('auth/logout') ?>">
+                                <i class="bi bi-box-arrow-left"></i> Logout
+                            </a>
+                        </li>
+                    <?php else: ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="<?= base_url('auth/login') ?>">Login</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="btn btn-primary ms-2" href="<?= base_url('auth/register') ?>">Register</a>
+                        </li>
+                    <?php endif; ?>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <main class="content-wrapper">
+        <?= $this->renderSection('content') ?>
+    </main>
+
+    <footer class="footer">
+        IEEP Management System © <?= date('Y') ?>
+    </footer>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
