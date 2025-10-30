@@ -8,6 +8,8 @@ use App\Models\PendingOrganizerModel;
 use App\Models\UserModel;
 use App\Models\EventRegistrationModel;
 use App\Models\CertificateTemplateModel;
+// --- ADDED: We need these for the preview and PDF generation ---
+use setasign\Fpdi\Fpdi;
 
 class Coordinator extends BaseController
 {
@@ -24,7 +26,7 @@ class Coordinator extends BaseController
             'upcoming'           => $proposalModel->where('status', 'pending')->countAllResults(),
             'organizer'          => $organizerModel->countAllResults(),
             'total_users'        => $userModel->where('role', 'user')->countAllResults(),
-            'attendance'         => $registrationModel->where('is_attended', 1)->countAllResults(),
+            // --- REMOVED --- 'attendance' key removed from coordinator stats
         ];
 
         $data['title'] = 'Coordinator Dashboard';
@@ -134,43 +136,9 @@ class Coordinator extends BaseController
         return redirect()->to('coordinator/proposals')->with('success', 'Proposal rejected.');
     }
 
-    public function attendance()
-    {
-        $eventModel = new EventModel();
-        $registrationModel = new EventRegistrationModel();
-        $userModel = new UserModel();
-
-        $data['events'] = $eventModel->findAll(); // Coordinator sees all events
-        $data['participants'] = [];
-        $data['selected_event'] = null;
-
-        if ($this->request->getPost('event_id')) {
-            $eventId = $this->request->getPost('event_id');
-            $data['selected_event'] = $eventId;
-            
-            if ($this->request->getPost('participants')) {
-                $participants = $this->request->getPost('participants'); 
-                $allRegistrations = $registrationModel->where('event_id', $eventId)->findAll();
-                
-                foreach ($allRegistrations as $reg) {
-                    $attended = in_array($reg['user_id'], $participants) ? 1 : 0;
-                    $registrationModel->update($reg['id'], ['is_attended' => $attended]);
-                }
-                session()->setFlashdata('success', 'Attendance updated successfully.');
-            }
-
-            $data['participants'] = $registrationModel
-                ->where('event_id', $eventId)
-                ->join('users', 'users.id = event_registrations.user_id')
-                // --- FIX: Changed users.username to users.email and aliased as username ---
-                ->select('users.id, users.email as username, users.email, event_registrations.is_attended')
-                ->findAll();
-        }
-
-        $data['title'] = 'Mark Attendance';
-        // --- FIX: This view file is now created ---
-        return view('coordinator/attendance', $data); 
-    }
+    // --- REMOVED ---
+    // The attendance() method has been removed from the Coordinator controller.
+    // This is now handled only by the Organizer.
 
     public function certificates()
     {
@@ -180,8 +148,10 @@ class Coordinator extends BaseController
         return view('coordinator/certificates', $data);
     }
     
+    // --- ADDED --- This method was moved from Organizer controller
     public function templates()
     {
+        helper('form'); // --- FIX: Load the form helper ---
         $templateModel = new CertificateTemplateModel();
         $coordinatorId = session()->get('id'); // This is now the Coordinator's ID
 
@@ -193,6 +163,12 @@ class Coordinator extends BaseController
                 'name_y' => 'required|integer',
                 'event_x' => 'required|integer',
                 'event_y' => 'required|integer',
+                // --- ADDED ---
+                'student_id_x' => 'required|integer',
+                'student_id_y' => 'required|integer',
+                // --- REMOVED Event Date ---
+                // 'date_x' => 'required|integer',
+                // 'date_y' => 'required|integer',
             ];
 
             if (!$this->validate($rules)) {
@@ -215,6 +191,12 @@ class Coordinator extends BaseController
                 'name_y' => $this->request->getPost('name_y'),
                 'event_x' => $this->request->getPost('event_x'),
                 'event_y' => $this->request->getPost('event_y'),
+                // --- ADDED ---
+                'student_id_x' => $this->request->getPost('student_id_x'),
+                'student_id_y' => $this->request->getPost('student_id_y'),
+                // --- REMOVED Event Date ---
+                // 'date_x' => $this->request->getPost('date_x'),
+                // 'date_y' => $this->request->getPost('date_y'),
             ];
 
             $templateModel->save($data);
@@ -224,12 +206,68 @@ class Coordinator extends BaseController
         $data['templates'] = $templateModel->where('organizer_id', $coordinatorId)->findAll();
         $data['title'] = 'Manage IEEP Templates';
         // --- FIX: This view file is now created ---
-        return view('coordinator/templates', $data);
+        return view('coordinator/templates', $data); // This view must be created
+    }
+
+    /**
+     * --- NEW ---
+     * Generates a preview of a template with dummy data.
+     */
+    public function previewTemplate($id)
+    {
+        // Load FPDF and FPDI libraries
+        require_once APPPATH . 'ThirdParty/fpdf/fpdf.php';
+        require_once APPPATH . 'ThirdParty/fpdf/fpdi.php';
+
+        $templateModel = new CertificateTemplateModel();
+        $template = $templateModel->find($id);
+
+        if (!$template) {
+            return redirect()->to('coordinator/templates')->with('error', 'Template not found.');
+        }
+
+        $templatePath = ROOTPATH . $template['template_path'];
+        if (!file_exists($templatePath)) {
+            log_message('error', 'Certificate template file not found for preview: ' . $templatePath);
+            return redirect()->to('coordinator/templates')->with('error', 'Template file is missing. Please re-upload it.');
+        }
+
+        $pdf = new Fpdi();
+        $pdf->AddPage();
+
+        // Set source file and import
+        $pageCount = $pdf->setSourceFile($templatePath);
+        $tplIdx = $pdf->importPage(1);
+        $pdf->useTemplate($tplIdx, 0, 0);
+
+        // Set font and color for dummy text
+        $pdf->SetFont('Arial', 'B', 16);
+        $pdf->SetTextColor(0, 0, 0); // Black
+
+        // 1. Add Participant Name
+        $pdf->SetXY($template['name_x'], $template['name_y']);
+        $pdf->Write(0, 'Participant Name');
+
+        // 2. Add Student ID
+        $pdf->SetXY($template['student_id_x'], $template['student_id_y']);
+        $pdf->Write(0, '10DDT23F1000');
+
+        // 3. Add Event Title
+        $pdf->SetXY($template['event_x'], $template['event_y']);
+        $pdf->Write(0, 'Sample Event Title');
+
+        // 4. Add Event Date --- REMOVED ---
+        // $pdf->SetXY($template['date_x'], $template['date_y']);
+        // $pdf->Write(0, date('F j, Y')); // Use today's date for preview
+
+        // Output PDF to browser
+        $this->response->setHeader('Content-Type', 'application/pdf');
+        $pdf->Output('I', 'template_preview.pdf');
     }
 
     public function publish_certificates($eventId)
     {
-        // This assumes you have fpdf.php and fpdi.php in app/ThirdParty/fpdf/
+        // ... ADDED THIS LINE HERE ...
         // You MUST upload these files.
         require_once APPPATH . 'ThirdParty/fpdf/fpdf.php';
         require_once APPPATH . 'ThirdParty/fpdf/fpdi.php'; 
@@ -239,20 +277,39 @@ class Coordinator extends BaseController
         if (!$event) {
             return redirect()->back()->with('error', 'Event not found.');
         }
-        
-        $coordinatorId = session()->get('id');
-        
+        // ... We need to load the FPDI class itself.
+        // --- FIX: This requires both fpdf.php and fpdi.php ---
+        require_once APPPATH . 'ThirdParty/fpdf/fpdf.php';
+        require_once APPPATH . 'ThirdParty/fpdf/fpdi.php';
+
+        $eventModel = new EventModel();
+        // --- FIX: This requires both fpdf.php and fpdi.php ---
+        require_once APPPATH . 'ThirdParty/fpdf/fpdf.php';
+        require_once APPPATH . 'ThirdParty/fpdf/fpdi.php';
+
+        // --- ADDED: Load models used in this function ---
         $templateModel = new CertificateTemplateModel();
         $registrationModel = new EventRegistrationModel();
         $userModel = new UserModel();
+        // --- End Add ---
 
+        // --- FIX: Find the template *before* the loop ---
+        $coordinatorId = session()->get('id');
         $template = $templateModel->where('organizer_id', $coordinatorId)->first();
-
+        
         if (!$template) {
-             $template = $templateModel->where('organizer_id', 1)->first(); // Check for Admin's template
-             if(!$template) {
+            // As a fallback, try to find a system-wide template (e.g., organizer_id = 1 for Admin)
+            $template = $templateModel->where('organizer_id', 1)->first(); 
+            if(!$template) {
                 return redirect()->back()->with('error', 'No IEEP certificate template found. Please upload a template in "Manage Templates".');
-             }
+            }
+        }
+
+        // --- CHECK if template file exists ---
+        $templatePath = ROOTPATH . $template['template_path'];
+        if (!file_exists($templatePath)) {
+            log_message('error', 'Certificate template file not found: ' . $templatePath);
+            return redirect()->back()->with('error', 'Certificate template file is missing. Please re-upload it.');
         }
 
         $participants = $registrationModel
@@ -288,14 +345,23 @@ class Coordinator extends BaseController
 
             // Add participant name
             $pdf->SetXY($template['name_x'], $template['name_y']);
-            // --- FIX: Use email as username, as username does not exist ---
-            $pdf->Write(0, $user['email']);
+            // --- FIX: Use user's name (we will assume 'name' column exists, fallback to email) ---
+            $pdf->Write(0, $user['name'] ?? $user['email']);
+
+            // --- ADDED: Add Student ID ---
+            $pdf->SetXY($template['student_id_x'], $template['student_id_y']);
+            $pdf->Write(0, $user['student_id'] ?? 'N/A');
 
             // Add event title
             $pdf->SetXY($template['event_x'], $template['event_y']);
-            $pdf->Write(0, $event['title']);
+        $pdf->Write(0, $event['title']);
 
-            $certDir = ROOTPATH . 'writable/certificates';
+        // --- REMOVED: Add event date ---
+        // $pdf->SetXY($template['date_x'], $template['date_y']);
+        // $pdf->Write(0, date('F j, Y', strtotime($event['date']))); // Format the date nicely
+
+        // Define the output path
+        $certDir = ROOTPATH . 'writable/certificates';
             if (!is_dir($certDir)) {
                 mkdir($certDir, 0777, true);
             }
@@ -314,4 +380,3 @@ class Coordinator extends BaseController
         return redirect()->to('coordinator/certificates')->with('success', "Published $generatedCount certificates successfully.");
     }
 }
-

@@ -77,8 +77,3 @@ $routes->get('organizer/participants', 'Organizer::participants');
 $routes->post('organizer/submitProposal', 'Organizer::submitProposal');
 $routes->match(['GET', 'POST'], 'organizer/attendance', 'Organizer::attendance');
 
-// --- REMOVED --- Certificate and Template routes from organizer
-// $routes->get('organizer/certificates', 'Organizer::certificates');
-// $routes->get('organizer/view-certificate/(:num)', 'Organizer::viewCertificate/$1');
-// $routes->match(['GET', 'POST'], 'organizer/templates', 'Organizer::templates');
-

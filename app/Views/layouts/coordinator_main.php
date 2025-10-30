@@ -233,11 +233,9 @@
                     <i class="bi bi-person-check-fill"></i> Organizer Approvals
                 </a>
             </li>
-            <li>
-                <a href="<?= base_url('coordinator/attendance') ?>" class="nav-link <?= (uri_string() == 'coordinator/attendance') ? 'active' : '' ?>">
-                    <i class="bi bi-person-lines-fill"></i> Mark Attendance
-                </a>
-            </li>
+            
+            <!-- --- REMOVED "Mark Attendance" link per our last change --- -->
+            
             <li>
                 <a href="<?= base_url('coordinator/certificates') ?>" class="nav-link <?= (uri_string() == 'coordinator/certificates') ? 'active' : '' ?>">
                     <i class="bi bi-patch-check-fill"></i> Publish Certificates
