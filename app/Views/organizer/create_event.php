@@ -4,9 +4,15 @@
 <div class="container-fluid px-4">
   <div class="card shadow-sm border-0 mb-4">
     <div class="card-header bg-light">
-      <h4 class="fw-bold text-secondary mb-0">Create New Event</h4>
+      <h4 class="fw-bold text-secondary mb-0">Create New Event Proposal</h4>
     </div>
     <div class="card-body bg-white">
+
+        <?php if (isset($validation)): ?>
+            <div class="alert alert-danger" role="alert">
+                <?= $validation->listErrors() ?>
+            </div>
+        <?php endif; ?>
 
         <form method="post" action="<?= base_url('organizer/submitProposal') ?>" enctype="multipart/form-data">
     <?= csrf_field() ?>
@@ -14,32 +20,31 @@
     <div class="row mb-3">
       <div class="col-md-6">
         <label class="form-label fw-semibold">Event Name</label>
-        <input type="text" name="event_name" class="form-control" required>
+        <input type="text" name="title" class="form-control" required value="<?= set_value('title') ?>">
       </div>
       <div class="col-md-3">
         <label class="form-label fw-semibold">Date</label>
-        <input type="date" name="event_date" class="form-control" required>
+        <input type="date" name="date" class="form-control" required value="<?= set_value('date') ?>">
       </div>
       <div class="col-md-3">
         <label class="form-label fw-semibold">Time</label>
-        <input type="time" name="event_time" class="form-control" required>
+        <input type="time" name="event_time" class="form-control" required value="<?= set_value('event_time') ?>">
       </div>
     </div>
 
     <div class="mb-3">
       <label class="form-label fw-semibold">Location / Venue</label>
-      <input type="text" name="event_location" class="form-control" required>
+      <input type="text" name="event_location" class="form-control" required value="<?= set_value('event_location') ?>">
     </div>
 
-    <!-- Replaced Eligible Age with Program Start/End -->
     <div class="row mb-3">
       <div class="col-md-6">
         <label class="form-label fw-semibold">Program Start</label>
-        <input type="datetime-local" name="program_start" class="form-control" required>
+        <input type="datetime-local" name="program_start" class="form-control" required value="<?= set_value('program_start') ?>">
       </div>
       <div class="col-md-6">
         <label class="form-label fw-semibold">Program End</label>
-        <input type="datetime-local" name="program_end" class="form-control" required>
+        <input type="datetime-local" name="program_end" class="form-control" required value="<?= set_value('program_end') ?>">
       </div>
     </div>
 
@@ -57,21 +62,21 @@
 
     <div class="mb-3">
       <label class="form-label fw-semibold">Event Poster</label>
-      <input type="file" name="poster_image" class="form-control" accept="image/*" required>
+      <input type="file" name="poster" class="form-control" accept="image/*" required>
     </div>
 
     <div class="mb-3">
       <label class="form-label fw-semibold">Event Description</label>
-      <textarea name="event_description" class="form-control" rows="4" required></textarea>
+      <textarea name="description" class="form-control" rows="4" required><?= set_value('description') ?></textarea>
     </div>
 
     <div class="mb-3">
       <label class="form-label fw-semibold">Upload Proposal Document</label>
-      <input type="file" name="proposal_file" class="form-control" accept=".pdf,.doc,.docx" required>
+      <input type="file" name="proposal" class="form-control" accept=".pdf" required>
     </div>
 
     <div class="text-end">
-      <button type="submit" class="btn btn-primary px-4">Submit Event</button>
+      <button type="submit" class="btn btn-primary px-4">Submit Proposal</button>
     </div>
   </form>
 </div>

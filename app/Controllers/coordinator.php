@@ -13,6 +13,7 @@ use setasign\Fpdi\Fpdi;
 
 class Coordinator extends BaseController
 {
+    // ... dashboard() function is unchanged ...
     public function dashboard()
     {
         $eventModel = new EventModel();
@@ -23,10 +24,10 @@ class Coordinator extends BaseController
 
         $stats = [
             'ongoing'            => $eventModel->countAllResults(),
-            'upcoming'           => $proposalModel->where('status', 'pending')->countAllResults(),
+            // --- FIX 1 (minor): Changed to 'Pending' for consistency ---
+            'upcoming'           => $proposalModel->where('status', 'Pending')->countAllResults(),
             'organizer'          => $organizerModel->countAllResults(),
             'total_users'        => $userModel->where('role', 'user')->countAllResults(),
-            // --- REMOVED --- 'attendance' key removed from coordinator stats
         ];
 
         $data['title'] = 'Coordinator Dashboard';
@@ -35,19 +36,26 @@ class Coordinator extends BaseController
         return view('coordinator/dashboard', $data);
     }
 
+
+    /**
+     * --- THIS FUNCTION HAS BEEN FIXED ---
+     */
     public function proposals()
     {
         $proposalModel = new PendingProposalModel();
-        $data['proposals'] = $proposalModel
+        // --- FIX 2: Renamed variable to match your view file ---
+        $data['pendingProposals'] = $proposalModel
             ->join('users', 'users.id = pending_proposals.organizer_id')
-            // --- FIX: Changed users.username to users.email ---
             ->select('pending_proposals.*, users.email as organizer_name')
-            ->where('status', 'pending')
+            // --- FIX 3: Changed to 'Pending' (case-sensitive) ---
+            ->where('status', 'Pending')
             ->findAll();
         
         $data['title'] = 'Pending Proposals';
         return view('coordinator/proposals', $data);
     }
+
+    // ... registrationControl() and upcomingEvents() are unchanged ...
 
     public function registrationControl()
     {
@@ -61,13 +69,14 @@ class Coordinator extends BaseController
         $eventModel = new EventModel();
         $data['events'] = $eventModel
             ->join('users', 'users.id = events.organizer_id')
-            // --- FIX: Changed users.username to users.email ---
             ->select('events.*, users.email as organizer_name')
             ->findAll();
             
         $data['title'] = 'Upcoming Events';
         return view('coordinator/upcoming_events', $data);
     }
+
+    // ... approvals(), approve(), and reject() are unchanged ...
 
     public function approvals()
     {
@@ -85,10 +94,6 @@ class Coordinator extends BaseController
         $pendingUser = $pendingModel->find($id);
 
         if ($pendingUser) {
-            // Note: The 'username' field does not exist in the users table.
-            // We will use the email for the username field if the auth system needs it,
-            // but the main 'users' table migration does not have it.
-            // The Auth controller's register function *also* uses email as username.
             $userModel->insert([
                 'username' => $pendingUser['email'], // Using email as username
                 'email' => $pendingUser['email'],
@@ -108,6 +113,10 @@ class Coordinator extends BaseController
         return redirect()->to('coordinator/approvals')->with('success', 'Organizer rejected.');
     }
 
+
+    /**
+     * --- THIS FUNCTION HAS BEEN FIXED ---
+     */
     public function approveProposal($id)
     {
         $pendingModel = new PendingProposalModel();
@@ -116,29 +125,48 @@ class Coordinator extends BaseController
         $proposal = $pendingModel->find($id);
 
         if ($proposal) {
-            $eventModel->insert([
-                'title' => $proposal['title'],
-                'description' => $proposal['description'],
-                'date' => $proposal['date'],
-                'poster_path' => $proposal['poster_path'],
-                'organizer_id' => $proposal['organizer_id'],
-            ]);
-            $pendingModel->update($id, ['status' => 'approved']);
+            
+            // --- THIS IS THE FIX ---
+            // We are now mapping all the fields from the pending_proposals
+            // table to the correct columns in the events table.
+            $dataToInsert = [
+                'title'              => $proposal['event_name'],
+                'description'        => $proposal['event_description'],
+                'date'               => $proposal['event_date'],
+                'time'               => $proposal['event_time'], // <-- Added this
+                'location'           => $proposal['event_location'], // <-- Added this
+                'program_start'      => $proposal['program_start'], // <-- Added this
+                'program_end'        => $proposal['program_end'], // <-- Added this
+                'eligible_semesters' => $proposal['eligible_semesters'], // <-- Added this
+                'thumbnail'          => $proposal['poster_image'], // <-- Corrected this name
+                'organizer_id'       => $proposal['organizer_id'],
+                'status'             => 'approved' // Set status for the new event
+            ];
+            
+            $eventModel->insert($dataToInsert);
+            // --- END OF FIX ---
+
+            // Update the proposal status to 'Approved' (with a capital A)
+            $pendingModel->update($id, ['status' => 'Approved']);
+            
             return redirect()->to('coordinator/proposals')->with('success', 'Proposal approved and event created.');
         }
+        
         return redirect()->to('coordinator/proposals')->with('error', 'Proposal not found.');
     }
 
+    /**
+     * --- THIS FUNCTION HAS BEEN FIXED ---
+     */
     public function rejectProposal($id)
     {
         $pendingModel = new PendingProposalModel();
-        $pendingModel->update($id, ['status' => 'rejected']);
+        // --- FIX 6: Changed to 'Rejected' (case-sensitive) ---
+        $pendingModel->update($id, ['status' => 'Rejected']);
         return redirect()->to('coordinator/proposals')->with('success', 'Proposal rejected.');
     }
 
-    // --- REMOVED ---
-    // The attendance() method has been removed from the Coordinator controller.
-    // This is now handled only by the Organizer.
+    // ... all other functions (certificates, templates, preview, publish) are unchanged ...
 
     public function certificates()
     {
@@ -148,10 +176,9 @@ class Coordinator extends BaseController
         return view('coordinator/certificates', $data);
     }
     
-    // --- ADDED --- This method was moved from Organizer controller
     public function templates()
     {
-        helper('form'); // --- FIX: Load the form helper ---
+        helper('form'); 
         $templateModel = new CertificateTemplateModel();
         $coordinatorId = session()->get('id'); // This is now the Coordinator's ID
 
@@ -163,12 +190,8 @@ class Coordinator extends BaseController
                 'name_y' => 'required|integer',
                 'event_x' => 'required|integer',
                 'event_y' => 'required|integer',
-                // --- ADDED ---
                 'student_id_x' => 'required|integer',
                 'student_id_y' => 'required|integer',
-                // --- REMOVED Event Date ---
-                // 'date_x' => 'required|integer',
-                // 'date_y' => 'required|integer',
             ];
 
             if (!$this->validate($rules)) {
@@ -191,12 +214,8 @@ class Coordinator extends BaseController
                 'name_y' => $this->request->getPost('name_y'),
                 'event_x' => $this->request->getPost('event_x'),
                 'event_y' => $this->request->getPost('event_y'),
-                // --- ADDED ---
                 'student_id_x' => $this->request->getPost('student_id_x'),
                 'student_id_y' => $this->request->getPost('student_id_y'),
-                // --- REMOVED Event Date ---
-                // 'date_x' => $this->request->getPost('date_x'),
-                // 'date_y' => $this->request->getPost('date_y'),
             ];
 
             $templateModel->save($data);
@@ -205,20 +224,11 @@ class Coordinator extends BaseController
 
         $data['templates'] = $templateModel->where('organizer_id', $coordinatorId)->findAll();
         $data['title'] = 'Manage IEEP Templates';
-        // --- FIX: This view file is now created ---
         return view('coordinator/templates', $data); // This view must be created
     }
 
-    /**
-     * --- NEW ---
-     * Generates a preview of a template with dummy data.
-     */
     public function previewTemplate($id)
     {
-        // --- FIX: REMOVED THESE LINES ---
-        // require_once APPPATH . 'ThirdParty/fpdf/fpdf.php';
-        // require_once APPPATH . 'ThirdParty/fpdf/fpdi.php';
-
         $templateModel = new CertificateTemplateModel();
         $template = $templateModel->find($id);
 
@@ -263,23 +273,16 @@ class Coordinator extends BaseController
 
     public function publish_certificates($eventId)
     {
-        // --- FIX: REMOVED THESE LINES ---
-        // require_once APPPATH . 'ThirdParty/fpdf/fpdf.php';
-        // require_once APPPATH . 'ThirdParty/fpdf/fpdi.php'; 
-
         $eventModel = new EventModel();
         $event = $eventModel->find($eventId);
         if (!$event) {
             return redirect()->back()->with('error', 'Event not found.');
         }
         
-        // --- ADDED: Load models used in this function ---
         $templateModel = new CertificateTemplateModel();
         $registrationModel = new EventRegistrationModel();
         $userModel = new UserModel();
-        // --- End Add ---
 
-        // --- FIX: Find the template *before* the loop ---
         $coordinatorId = session()->get('id');
         $template = $templateModel->where('organizer_id', $coordinatorId)->first();
         
@@ -291,7 +294,6 @@ class Coordinator extends BaseController
             }
         }
 
-        // --- CHECK if template file exists ---
         $templatePath = ROOTPATH . $template['template_path'];
         if (!file_exists($templatePath)) {
             log_message('error', 'Certificate template file not found: ' . $templatePath);
@@ -312,7 +314,7 @@ class Coordinator extends BaseController
             $user = $userModel->find($participant['user_id']);
             if (!$user) continue;
 
-            $pdf = new Fpdi(); // --- FIX: Changed from \Fpdi() to Fpdi() ---
+            $pdf = new Fpdi(); 
 
             $pdf->AddPage();
             
@@ -333,7 +335,7 @@ class Coordinator extends BaseController
             $pdf->SetXY($template['name_x'], $template['name_y']);
             $pdf->Write(0, $user['name'] ?? $user['email']);
 
-            // --- ADDED: Add Student ID ---
+            // Add Student ID
             $pdf->SetXY($template['student_id_x'], $template['student_id_y']);
             $pdf->Write(0, $user['student_id'] ?? 'N/A');
 
@@ -360,4 +362,4 @@ class Coordinator extends BaseController
 
         return redirect()->to('coordinator/certificates')->with('success', "Published $generatedCount certificates successfully.");
     }
-} 
+}
