@@ -215,9 +215,9 @@ class Coordinator extends BaseController
      */
     public function previewTemplate($id)
     {
-        // Load FPDF and FPDI libraries
-        require_once APPPATH . 'ThirdParty/fpdf/fpdf.php';
-        require_once APPPATH . 'ThirdParty/fpdf/fpdi.php';
+        // --- FIX: REMOVED THESE LINES ---
+        // require_once APPPATH . 'ThirdParty/fpdf/fpdf.php';
+        // require_once APPPATH . 'ThirdParty/fpdf/fpdi.php';
 
         $templateModel = new CertificateTemplateModel();
         $template = $templateModel->find($id);
@@ -232,7 +232,7 @@ class Coordinator extends BaseController
             return redirect()->to('coordinator/templates')->with('error', 'Template file is missing. Please re-upload it.');
         }
 
-        $pdf = new Fpdi();
+        $pdf = new Fpdi(); // This works now because of the 'use' statement
         $pdf->AddPage();
 
         // Set source file and import
@@ -256,10 +256,6 @@ class Coordinator extends BaseController
         $pdf->SetXY($template['event_x'], $template['event_y']);
         $pdf->Write(0, 'Sample Event Title');
 
-        // 4. Add Event Date --- REMOVED ---
-        // $pdf->SetXY($template['date_x'], $template['date_y']);
-        // $pdf->Write(0, date('F j, Y')); // Use today's date for preview
-
         // Output PDF to browser
         $this->response->setHeader('Content-Type', 'application/pdf');
         $pdf->Output('I', 'template_preview.pdf');
@@ -267,26 +263,16 @@ class Coordinator extends BaseController
 
     public function publish_certificates($eventId)
     {
-        // ... ADDED THIS LINE HERE ...
-        // You MUST upload these files.
-        require_once APPPATH . 'ThirdParty/fpdf/fpdf.php';
-        require_once APPPATH . 'ThirdParty/fpdf/fpdi.php'; 
+        // --- FIX: REMOVED THESE LINES ---
+        // require_once APPPATH . 'ThirdParty/fpdf/fpdf.php';
+        // require_once APPPATH . 'ThirdParty/fpdf/fpdi.php'; 
 
         $eventModel = new EventModel();
         $event = $eventModel->find($eventId);
         if (!$event) {
             return redirect()->back()->with('error', 'Event not found.');
         }
-        // ... We need to load the FPDI class itself.
-        // --- FIX: This requires both fpdf.php and fpdi.php ---
-        require_once APPPATH . 'ThirdParty/fpdf/fpdf.php';
-        require_once APPPATH . 'ThirdParty/fpdf/fpdi.php';
-
-        $eventModel = new EventModel();
-        // --- FIX: This requires both fpdf.php and fpdi.php ---
-        require_once APPPATH . 'ThirdParty/fpdf/fpdf.php';
-        require_once APPPATH . 'ThirdParty/fpdf/fpdi.php';
-
+        
         // --- ADDED: Load models used in this function ---
         $templateModel = new CertificateTemplateModel();
         $registrationModel = new EventRegistrationModel();
@@ -326,7 +312,7 @@ class Coordinator extends BaseController
             $user = $userModel->find($participant['user_id']);
             if (!$user) continue;
 
-            $pdf = new \Fpdi(); 
+            $pdf = new Fpdi(); // --- FIX: Changed from \Fpdi() to Fpdi() ---
 
             $pdf->AddPage();
             
@@ -345,7 +331,6 @@ class Coordinator extends BaseController
 
             // Add participant name
             $pdf->SetXY($template['name_x'], $template['name_y']);
-            // --- FIX: Use user's name (we will assume 'name' column exists, fallback to email) ---
             $pdf->Write(0, $user['name'] ?? $user['email']);
 
             // --- ADDED: Add Student ID ---
@@ -354,14 +339,10 @@ class Coordinator extends BaseController
 
             // Add event title
             $pdf->SetXY($template['event_x'], $template['event_y']);
-        $pdf->Write(0, $event['title']);
+            $pdf->Write(0, $event['title']);
 
-        // --- REMOVED: Add event date ---
-        // $pdf->SetXY($template['date_x'], $template['date_y']);
-        // $pdf->Write(0, date('F j, Y', strtotime($event['date']))); // Format the date nicely
-
-        // Define the output path
-        $certDir = ROOTPATH . 'writable/certificates';
+            // Define the output path
+            $certDir = ROOTPATH . 'writable/certificates';
             if (!is_dir($certDir)) {
                 mkdir($certDir, 0777, true);
             }
@@ -379,4 +360,4 @@ class Coordinator extends BaseController
 
         return redirect()->to('coordinator/certificates')->with('success', "Published $generatedCount certificates successfully.");
     }
-}
+} 

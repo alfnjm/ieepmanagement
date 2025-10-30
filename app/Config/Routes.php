@@ -67,7 +67,6 @@ $routes->get('coordinator/certificates', 'Coordinator::certificates', ['filter' 
 $routes->get('coordinator/publish_certificates/(:num)', 'Coordinator::publish_certificates/$1', ['filter' => 'coordinator']);
 // --- ADDED --- Moved template management from Organizer to Coordinator
 $routes->match(['GET', 'POST'], 'coordinator/templates', 'Coordinator::templates', ['filter' => 'coordinator']);
-$routes->get('coordinator/preview_template/(:num)', 'Coordinator::previewTemplate/$1', ['filter' => 'coordinator']);
 
 
 // Organizer Routes
@@ -77,4 +76,3 @@ $routes->get('organizer/my-proposals', 'Organizer::myProposals');
 $routes->get('organizer/participants', 'Organizer::participants');
 $routes->post('organizer/submitProposal', 'Organizer::submitProposal');
 $routes->match(['GET', 'POST'], 'organizer/attendance', 'Organizer::attendance');
-
