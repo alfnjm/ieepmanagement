@@ -44,7 +44,7 @@
                             <input type="number" name="name_y" class="form-control" placeholder="Y" value="<?= set_value('name_y', 120) ?>">
                         </div>
                     </div>
-                    <!-- --- ADDED: Student ID --- -->
+                    <!-- --- FIXED: Added Student ID --- -->
                     <div class="col-md-4">
                         <label>Student ID (X, Y)</label>
                         <div class="input-group">
@@ -59,7 +59,7 @@
                             <input type="number" name="event_y" class="form-control" placeholder="Y" value="<?= set_value('event_y', 150) ?>">
                         </div>
                     </div>
-                    <!-- --- REMOVED Event Date --- -->
+                    <!-- --- FIXED: Removed Event Date --- -->
                 </div>
                 
                 <button type="submit" class="btn btn-primary mt-3"><i class="bi bi-upload"></i> Save Template</button>
@@ -80,7 +80,7 @@
                             <th>Name (X,Y)</th>
                             <th>Student ID (X,Y)</th>
                             <th>Event (X,Y)</th>
-                            <!-- --- REMOVED Date --- -->
+                            <!-- --- FIXED: Removed Date --- -->
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -94,9 +94,9 @@
                                     <td><?= esc($t['name_x']) ?>, <?= esc($t['name_y']) ?></td>
                                     <td><?= esc($t['student_id_x'] ?? 'N/A') ?>, <?= esc($t['student_id_y'] ?? 'N/A') ?></td>
                                     <td><?= esc($t['event_x']) ?>, <?= esc($t['event_y']) ?></td>
-                                    <!-- --- REMOVED Date --- -->
+                                    <!-- --- FIXED: Removed Date --- -->
                                     <td>
-                                        <!-- --- ADDED: Preview Button --- -->
+                                        <!-- --- FIXED: Added Preview Button --- -->
                                         <a href="<?= base_url('coordinator/preview_template/' . $t['id']) ?>" class="btn btn-sm btn-info" target="_blank" title="Preview">
                                             <i class="bi bi-eye-fill"></i>
                                         </a>
