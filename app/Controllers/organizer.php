@@ -12,8 +12,41 @@ class Organizer extends BaseController
     public function dashboard()
     {
         $eventModel = new EventModel();
-        $userId = session()->get('id');
-        $data['events'] = $eventModel->where('organizer_id', $userId)->findAll();
+        $proposalModel = new PendingProposalModel();
+        $registrationModel = new EventRegistrationModel();
+        
+        $organizerId = session()->get('id');
+
+        // 1. Get all event IDs for this organizer that are approved
+        $eventIds = $eventModel->where('organizer_id', $organizerId)
+                             ->where('status', 'approved')
+                             ->findColumn('id'); // Gets just the IDs, e.g., [4, 6]
+
+        $stats = [
+            'my_events'           => 0,
+            'proposals_submitted' => 0,
+            'total_participants'  => 0,
+            'certificates_issued' => 0
+        ];
+
+        // 2. Calculate stats
+        $stats['my_events'] = count($eventIds);
+        $stats['proposals_submitted'] = $proposalModel->where('organizer_id', $organizerId)->countAllResults();
+
+        // 3. Calculate stats only if the organizer has events
+        if (!empty($eventIds)) {
+            $stats['total_participants'] = $registrationModel
+                ->whereIn('event_id', $eventIds)
+                ->where('is_attended', 1)
+                ->countAllResults();
+            
+            $stats['certificates_issued'] = $registrationModel
+                ->whereIn('event_id', $eventIds)
+                ->where('certificate_published', 1)
+                ->countAllResults();
+        }
+
+        $data['stats'] = $stats;
         $data['title'] = 'Organizer Dashboard';
         return view('organizer/dashboard', $data);
     }
@@ -100,57 +133,115 @@ class Organizer extends BaseController
 
     public function participants()
     {
+        // Load necessary models
         $eventModel = new EventModel();
+        $registrationModel = new EventRegistrationModel(); 
         $userId = session()->get('id');
-        
-        // Get events for this organizer
-        $data['events'] = $eventModel->where('organizer_id', $userId)->findAll();
-        $data['title'] = 'Event Participants';
 
+        // --- FIX: Initialize $selected_event to null ---
+        $data['selected_event'] = null;
+        $data['participants'] = []; // Default to empty array
+
+        // Get events for the dropdown
+        $data['events'] = $eventModel->where('organizer_id', $userId)
+                                     ->where('status', 'approved')
+                                     ->findAll();
+
+        // Check for a selected event from the URL
+        $selectedEventId = $this->request->getGet('event_id');
+
+        if ($selectedEventId) {
+            $data['selected_event'] = $selectedEventId; // Set the selected event
+            
+            // Get participants ONLY for the selected event
+            $data['participants'] = $registrationModel
+                ->join('users', 'users.id = event_registrations.user_id')
+                ->join('events', 'events.id = event_registrations.event_id')
+                ->where('event_registrations.event_id', $selectedEventId) // Only for this event
+                ->where('event_registrations.is_attended', 1) // Only attended participants
+                ->select('
+                    events.title as event_title, 
+                    events.date as event_date, 
+                    users.name as participant_name, 
+                    users.student_id as student_id, 
+                    users.email as email
+                ')
+                ->findAll();
+        }
+
+        // Pass data to the view
+        $data['title'] = 'Event Participants';
         return view('organizer/participants', $data);
     }
     
     public function attendance()
     {
         $eventModel = new EventModel();
-        $registrationModel = new EventRegistrationModel(); // This line caused the error
+        $registrationModel = new EventRegistrationModel();
         $userModel = new UserModel();
         
         $organizerId = session()->get('id');
-        $data['events'] = $eventModel->where('organizer_id', $organizerId)->findAll();
-        $data['participants'] = [];
+        
+        // --- FIX: Initialize $selected_event to null ---
         $data['selected_event'] = null;
+        $data['participants'] = [];
 
-        if ($this->request->getPost('event_id')) {
-            $eventId = $this->request->getPost('event_id');
-            $data['selected_event'] = $eventId;
+        // --- Handle POST request for SAVING attendance ---
+        if ($this->request->getMethod() === 'post') {
             
-            // On POST: Update attendance
-            if ($this->request->getPost('participants')) {
-                $participants = $this->request->getPost('participants'); // Array of user_ids that attended
-                
-                // Get all participants for this event
+            $participants = $this->request->getPost('participants'); 
+            if (is_null($participants)) {
+                $participants = []; // Treat no checks as an empty array
+            }
+            
+            $eventId = $this->request->getPost('event_id'); 
+
+            if (!empty($eventId)) {
                 $allRegistrations = $registrationModel->where('event_id', $eventId)->findAll();
-                
+
                 foreach ($allRegistrations as $reg) {
                     $attended = in_array($reg['user_id'], $participants) ? 1 : 0;
-                    // Ensure you're using the correct primary key for update, assuming 'id'
                     $registrationModel->update($reg['id'], ['is_attended' => $attended]);
                 }
                 
                 session()->setFlashdata('success', 'Attendance updated successfully.');
+            } else {
+                session()->setFlashdata('error', 'Could not save attendance. Event ID was missing.');
             }
+            
+            // Redirect back to the same page, preserving the selected event
+            return redirect()->to('organizer/attendance?event_id=' . $eventId);
+        }
+        
+        // --- Handle GET request for DISPLAYING participants ---
+        
+        // Get only 'approved' events for the dropdown
+        $data['events'] = $eventModel->where('organizer_id', $organizerId)
+                                    ->where('status', 'approved')
+                                    ->findAll();
 
+        // Check if an event_id is provided in the URL (from the dropdown)
+        $selectedEventId = $this->request->getGet('event_id');
+
+        if ($selectedEventId) {
+            $data['selected_event'] = $selectedEventId; // Set the selected event
+            
             // Get participants for the selected event
             $data['participants'] = $registrationModel
-                ->where('event_id', $eventId)
+                ->where('event_id', $selectedEventId)
                 ->join('users', 'users.id = event_registrations.user_id')
-                ->select('users.id, users.username, users.email, event_registrations.is_attended')
+                ->select('
+                    users.id as user_id, 
+                    users.name, 
+                    users.student_id, 
+                    users.email, 
+                    event_registrations.is_attended, 
+                    event_registrations.id as reg_id
+                ')
                 ->findAll();
         }
 
         $data['title'] = 'Mark Attendance';
         return view('organizer/attendance', $data);
     }
-
 }
