@@ -2,36 +2,76 @@
 
 namespace App\Controllers;
 
-use App\Models\PendingOrganizerModel;
-use App\Models\UserModel;
 use App\Models\PendingProposalModel;
 use App\Models\EventModel;
-use App\Models\RegistrationModel;
-use setasign\Fpdi\Tcpdf\Fpdi;
+use App\Models\PendingOrganizerModel;
+use App\Models\UserModel;
+use App\Models\EventRegistrationModel;
+use App\Models\CertificateTemplateModel;
 
 class Coordinator extends BaseController
 {
     public function dashboard()
     {
-        $pendingModel = new PendingOrganizerModel();
-        $data['pendingOrganizers'] = $pendingModel->findAll();
+        $eventModel = new EventModel();
+        $proposalModel = new PendingProposalModel();
+        $organizerModel = new PendingOrganizerModel();
+        $userModel = new UserModel();
+        $registrationModel = new EventRegistrationModel(); 
 
-        $data['stats'] = [
-            'ongoing'   => 3,
-            'upcoming'  => 2,
-            'organizer' => 5,
-            'attendance'=> 120
+        $stats = [
+            'ongoing'            => $eventModel->countAllResults(),
+            'upcoming'           => $proposalModel->where('status', 'pending')->countAllResults(),
+            'organizer'          => $organizerModel->countAllResults(),
+            'total_users'        => $userModel->where('role', 'user')->countAllResults(),
+            'attendance'         => $registrationModel->where('is_attended', 1)->countAllResults(),
         ];
+
+        $data['title'] = 'Coordinator Dashboard';
+        $data['stats'] = $stats; 
 
         return view('coordinator/dashboard', $data);
     }
 
-    // ✅ Added this method
+    public function proposals()
+    {
+        $proposalModel = new PendingProposalModel();
+        $data['proposals'] = $proposalModel
+            ->join('users', 'users.id = pending_proposals.organizer_id')
+            // --- FIX: Changed users.username to users.email ---
+            ->select('pending_proposals.*, users.email as organizer_name')
+            ->where('status', 'pending')
+            ->findAll();
+        
+        $data['title'] = 'Pending Proposals';
+        return view('coordinator/proposals', $data);
+    }
+
+    public function registrationControl()
+    {
+        $data['title'] = 'Registration Control';
+        // Logic to toggle registration on/off
+        return view('coordinator/registration_control', $data);
+    }
+
+    public function upcomingEvents()
+    {
+        $eventModel = new EventModel();
+        $data['events'] = $eventModel
+            ->join('users', 'users.id = events.organizer_id')
+            // --- FIX: Changed users.username to users.email ---
+            ->select('events.*, users.email as organizer_name')
+            ->findAll();
+            
+        $data['title'] = 'Upcoming Events';
+        return view('coordinator/upcoming_events', $data);
+    }
+
     public function approvals()
     {
-        $pendingModel = new PendingOrganizerModel();
-        $data['pendingOrganizers'] = $pendingModel->findAll();
-
+        $model = new PendingOrganizerModel();
+        $data['pending_organizers'] = $model->findAll();
+        $data['title'] = 'Pending Approvals';
         return view('coordinator/approvals', $data);
     }
 
@@ -40,265 +80,238 @@ class Coordinator extends BaseController
         $pendingModel = new PendingOrganizerModel();
         $userModel = new UserModel();
 
-        $pending = $pendingModel->find($id);
-        if (!$pending) {
-            return redirect()->back()->with('error', 'Organizer not found.');
+        $pendingUser = $pendingModel->find($id);
+
+        if ($pendingUser) {
+            // Note: The 'username' field does not exist in the users table.
+            // We will use the email for the username field if the auth system needs it,
+            // but the main 'users' table migration does not have it.
+            // The Auth controller's register function *also* uses email as username.
+            $userModel->insert([
+                'username' => $pendingUser['email'], // Using email as username
+                'email' => $pendingUser['email'],
+                'password' => $pendingUser['password'], // Already hashed
+                'role' => 'organizer',
+            ]);
+            $pendingModel->delete($id);
+            return redirect()->to('coordinator/approvals')->with('success', 'Organizer approved.');
         }
-
-        $userModel->insert([
-            'name'     => $pending['name'],
-            'email'    => $pending['email'],
-            'password' => $pending['password'], // already hashed
-            'role'     => 'organizer',
-            'staff_id' => $pending['staff_id'],
-        ]);
-
-        $pendingModel->delete($id);
-
-        return redirect()->back()->with('success', 'Organizer approved successfully.');
+        return redirect()->to('coordinator/approvals')->with('error', 'User not found.');
     }
 
     public function reject($id)
     {
         $pendingModel = new PendingOrganizerModel();
-
-        $pending = $pendingModel->find($id);
-        if (!$pending) {
-            return redirect()->back()->with('error', 'Organizer not found.');
-        }
-
         $pendingModel->delete($id);
-
-        return redirect()->back()->with('success', 'Organizer registration rejected and removed.');
+        return redirect()->to('coordinator/approvals')->with('success', 'Organizer rejected.');
     }
 
-    public function proposals()
-    {
-        $pendingModel = new PendingProposalModel();
-        $data['pendingProposals'] = $pendingModel->findAll();
-        return view('coordinator/proposals', $data);
-    }
-
-    // ⭐ FIX: This method now MOVES the event to the live EventModel table.
     public function approveProposal($id)
     {
-        $proposalModel = new PendingProposalModel();
-        $eventModel = new EventModel(); // Instantiate the live event model
+        $pendingModel = new PendingProposalModel();
+        $eventModel = new EventModel();
 
-        $proposal = $proposalModel->find($id);
+        $proposal = $pendingModel->find($id);
 
-        if (!$proposal) {
-            return redirect()->back()->with('error', 'Proposal not found.');
+        if ($proposal) {
+            $eventModel->insert([
+                'title' => $proposal['title'],
+                'description' => $proposal['description'],
+                'date' => $proposal['date'],
+                'poster_path' => $proposal['poster_path'],
+                'organizer_id' => $proposal['organizer_id'],
+            ]);
+            $pendingModel->update($id, ['status' => 'approved']);
+            return redirect()->to('coordinator/proposals')->with('success', 'Proposal approved and event created.');
         }
-
-        // 1. Prepare data for the live events table (MAPPING FIX)
-        $eventData = [
-            // Mapped Fields
-            'title'              => $proposal['event_name'], 
-            'description'        => $proposal['event_description'], 
-            'thumbnail'          => $proposal['poster_image'], 
-            'date'               => $proposal['event_date'],
-            'location'           => $proposal['event_location'],
-            
-            // Directly Transferred Fields
-            'organizer_id'       => $proposal['organizer_id'],
-            'status'             => 'approved',
-            'time'               => $proposal['event_time'],
-            'program_start'      => $proposal['program_start'],
-            'program_end'        => $proposal['program_end'],
-            'eligible_semesters' => $proposal['eligible_semesters'],
-            'created_at'         => date('Y-m-d H:i:s'),
-            'updated_at'         => date('Y-m-d H:i:s'),
-        ];
-
-        try {
-            // 2. Insert the mapped data into the main events table (EventModel)
-            $eventModel->insert($eventData);
-            
-            // 3. Delete the record from the pending proposals table
-            $proposalModel->delete($id);
-
-            return redirect()->back()->with('success', 'Event approved and published to the main page successfully!');
-        } catch (\Exception $e) {
-            log_message('error', 'Event Approval Failed: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Failed to approve event due to a database error. Check logs and model fields.');
-        }
+        return redirect()->to('coordinator/proposals')->with('error', 'Proposal not found.');
     }
 
     public function rejectProposal($id)
     {
-        $model = new PendingProposalModel();
-        $proposal = $model->find($id);
+        $pendingModel = new PendingProposalModel();
+        $pendingModel->update($id, ['status' => 'rejected']);
+        return redirect()->to('coordinator/proposals')->with('success', 'Proposal rejected.');
+    }
 
-        if (!$proposal) {
-            return redirect()->back()->with('error', 'Proposal not found.');
+    public function attendance()
+    {
+        $eventModel = new EventModel();
+        $registrationModel = new EventRegistrationModel();
+        $userModel = new UserModel();
+
+        $data['events'] = $eventModel->findAll(); // Coordinator sees all events
+        $data['participants'] = [];
+        $data['selected_event'] = null;
+
+        if ($this->request->getPost('event_id')) {
+            $eventId = $this->request->getPost('event_id');
+            $data['selected_event'] = $eventId;
+            
+            if ($this->request->getPost('participants')) {
+                $participants = $this->request->getPost('participants'); 
+                $allRegistrations = $registrationModel->where('event_id', $eventId)->findAll();
+                
+                foreach ($allRegistrations as $reg) {
+                    $attended = in_array($reg['user_id'], $participants) ? 1 : 0;
+                    $registrationModel->update($reg['id'], ['is_attended' => $attended]);
+                }
+                session()->setFlashdata('success', 'Attendance updated successfully.');
+            }
+
+            $data['participants'] = $registrationModel
+                ->where('event_id', $eventId)
+                ->join('users', 'users.id = event_registrations.user_id')
+                // --- FIX: Changed users.username to users.email and aliased as username ---
+                ->select('users.id, users.email as username, users.email, event_registrations.is_attended')
+                ->findAll();
         }
 
-        // Simply deleting the pending record
-        $model->delete($id); 
-        return redirect()->back()->with('success', 'Proposal rejected and removed.');
-    }
-
-    public function registrationControl()
-    {
-        // Now fetches from the live events table for approved events
-        $eventModel = new EventModel();
-        $data['approvedEvents'] = $eventModel->getApprovedEvents();
-
-        return view('coordinator/registration_control', $data);
-    }
-
-    public function upcomingEvents()
-    {
-        // 1. Fetch upcoming events (approved)
-        $eventModel = new \App\Models\EventModel();
-
-        // --- FIX ---
-        // Replaced getApprovedEvents() with a direct query for 'approved' status
-        $data['events'] = $eventModel
-            ->where('status', 'approved')
-            ->orderBy('date', 'ASC') // Show soonest events first
-            ->findAll();
-        // --- End Fix ---
-
-        // 2. Pass to the view
-        return view('coordinator/upcoming_events', $data);
+        $data['title'] = 'Mark Attendance';
+        // --- FIX: This view file is now created ---
+        return view('coordinator/attendance', $data); 
     }
 
     public function certificates()
-{
-    $eventModel = new EventModel();
-
-    // Get all approved events
-    $data['events'] = $eventModel
-        ->where('status', 'approved')
-        ->orderBy('date', 'DESC')
-        ->findAll();
-
-    return view('coordinator/certificates', $data);
-}
-
-    public function publish_certificates($event_id)
     {
-        $registrationModel = new RegistrationModel();
-        $userModel = new UserModel();
         $eventModel = new EventModel();
+        $data['events'] = $eventModel->findAll(); // Coordinator sees all events
+        $data['title'] = 'Publish Certificates';
+        return view('coordinator/certificates', $data);
+    }
+    
+    public function templates()
+    {
+        $templateModel = new CertificateTemplateModel();
+        $coordinatorId = session()->get('id'); // This is now the Coordinator's ID
 
-        // Ensure the certificates directory exists
-        $certPath = WRITEPATH . 'uploads/certificates/';
-        if (!is_dir($certPath)) {
-            mkdir($certPath, 0777, true);
+        if ($this->request->getMethod() === 'post') {
+            $rules = [
+                'template_name' => 'required|max_length[255]',
+                'template_file' => 'uploaded[template_file]|max_size[template_file,10240]|ext_in[template_file,pdf]',
+                'name_x' => 'required|integer',
+                'name_y' => 'required|integer',
+                'event_x' => 'required|integer',
+                'event_y' => 'required|integer',
+            ];
+
+            if (!$this->validate($rules)) {
+                return view('coordinator/templates', [
+                    'validation' => $this->validator,
+                    'templates' => $templateModel->where('organizer_id', $coordinatorId)->findAll(),
+                    'title' => 'Manage IEEP Templates'
+                ]);
+            }
+
+            $file = $this->request->getFile('template_file');
+            $fileName = $file->getRandomName();
+            $file->move(ROOTPATH . 'writable/templates', $fileName);
+
+            $data = [
+                'organizer_id' => $coordinatorId, // Saved with Coordinator's ID
+                'template_name' => $this->request->getPost('template_name'),
+                'template_path' => 'writable/templates/' . $fileName,
+                'name_x' => $this->request->getPost('name_x'),
+                'name_y' => $this->request->getPost('name_y'),
+                'event_x' => $this->request->getPost('event_x'),
+                'event_y' => $this->request->getPost('event_y'),
+            ];
+
+            $templateModel->save($data);
+            return redirect()->to('coordinator/templates')->with('success', 'Template uploaded successfully.');
         }
 
-        // Get the event details
-        $event = $eventModel->find($event_id);
+        $data['templates'] = $templateModel->where('organizer_id', $coordinatorId)->findAll();
+        $data['title'] = 'Manage IEEP Templates';
+        // --- FIX: This view file is now created ---
+        return view('coordinator/templates', $data);
+    }
+
+    public function publish_certificates($eventId)
+    {
+        // This assumes you have fpdf.php and fpdi.php in app/ThirdParty/fpdf/
+        // You MUST upload these files.
+        require_once APPPATH . 'ThirdParty/fpdf/fpdf.php';
+        require_once APPPATH . 'ThirdParty/fpdf/fpdi.php'; 
+
+        $eventModel = new EventModel();
+        $event = $eventModel->find($eventId);
         if (!$event) {
             return redirect()->back()->with('error', 'Event not found.');
         }
+        
+        $coordinatorId = session()->get('id');
+        
+        $templateModel = new CertificateTemplateModel();
+        $registrationModel = new EventRegistrationModel();
+        $userModel = new UserModel();
 
-        // Find participants who were marked as 'attended' (certificate_ready = 1)
-        // but have not had their certificate 'published' yet.
-        $participantsToPublish = $registrationModel
-            ->where('event_id', $event_id)
-            ->where('certificate_ready', 1)
-            ->where('certificate_published', 0)
+        $template = $templateModel->where('organizer_id', $coordinatorId)->first();
+
+        if (!$template) {
+             $template = $templateModel->where('organizer_id', 1)->first(); // Check for Admin's template
+             if(!$template) {
+                return redirect()->back()->with('error', 'No IEEP certificate template found. Please upload a template in "Manage Templates".');
+             }
+        }
+
+        $participants = $registrationModel
+            ->where('event_id', $eventId)
+            ->where('is_attended', 1)
             ->findAll();
 
-        if (empty($participantsToPublish)) {
-            return redirect()->to('coordinator/certificates')->with('message', 'No new certificates to publish for this event.');
+        if (empty($participants)) {
+            return redirect()->back()->with('info', 'No participants have been marked as attended for this event.');
         }
 
-        $publishedCount = 0;
-        foreach ($participantsToPublish as $participant) {
+        $generatedCount = 0;
+        foreach ($participants as $participant) {
             $user = $userModel->find($participant['user_id']);
+            if (!$user) continue;
 
-            if ($user) {
-                // 1. Generate the certificate
-                $generatedFilePath = $this->_generateCertificate($user, $event);
+            $pdf = new \Fpdi(); 
 
-                if ($generatedFilePath) {
-                    // 2. Update the registration record
-                    $data = [
-                        'certificate_path' => $generatedFilePath,
-                        'certificate_published' => 1
-                    ];
-                    $registrationModel->update($participant['id'], $data);
-                    $publishedCount++;
-                }
+            $pdf->AddPage();
+            
+            $templatePath = ROOTPATH . $template['template_path'];
+            if (!file_exists($templatePath)) {
+                log_message('error', 'Certificate template file not found: ' . $templatePath);
+                continue; 
             }
+            
+            $pageCount = $pdf->setSourceFile($templatePath);
+            $tplIdx = $pdf->importPage(1);
+            $pdf->useTemplate($tplIdx, 0, 0);
+
+            $pdf->SetFont('Arial', 'B', 16);
+            $pdf->SetTextColor(0, 0, 0); // Black
+
+            // Add participant name
+            $pdf->SetXY($template['name_x'], $template['name_y']);
+            // --- FIX: Use email as username, as username does not exist ---
+            $pdf->Write(0, $user['email']);
+
+            // Add event title
+            $pdf->SetXY($template['event_x'], $template['event_y']);
+            $pdf->Write(0, $event['title']);
+
+            $certDir = ROOTPATH . 'writable/certificates';
+            if (!is_dir($certDir)) {
+                mkdir($certDir, 0777, true);
+            }
+            $certPath = $certDir . '/event_' . $eventId . '_user_' . $user['id'] . '.pdf';
+            $certSavePath = 'writable/certificates/event_' . $eventId . '_user_' . $user['id'] . '.pdf';
+
+            $pdf->Output('F', $certPath);
+
+            $registrationModel->update($participant['id'], [
+                'certificate_published' => 1,
+                'certificate_path' => $certSavePath
+            ]);
+            $generatedCount++;
         }
 
-        return redirect()->to('coordinator/certificates')->with('message', $publishedCount . ' certificates have been successfully generated and published.');
-    }
-    private function _generateCertificate($user, $event)
-    {
-        // Path to your template PDF
-        $templatePath = WRITEPATH . 'templates/example_cert.pdf'; // <-- Make sure this path is correct
-        if (!file_exists($templatePath)) {
-            log_message('error', 'Certificate template not found: ' . $templatePath);
-            return false; // Stop if template is missing
-        }
-
-        // --- Use FPDI to load the template ---
-        $pdf = new \setasign\Fpdi\Tcpdf\Fpdi('L', 'mm', 'A4'); // 'L' for Landscape, mm units, A4 size
-
-        // Add a page (FPDI automatically uses the template dimensions)
-        $pdf->AddPage();
-        
-        // Import the first page of the template
-        $pdf->setSourceFile($templatePath);
-        $tplId = $pdf->importPage(1);
-        
-        // Use the imported page as the background for the current page
-        // The 'useTemplate' parameters might need adjustment if your PDF isn't exactly A4 landscape
-        // useTemplate($templateId, x-position, y-position, width, height) - null width/height uses original size
-        $pdf->useTemplate($tplId, 0, 0, null, null, true); // Adjust x, y, width, height if needed
-
-        // --- Add Dynamic Text using TCPDF methods ---
-
-        // Set Font
-        // You might need different fonts/sizes/colors for different text elements
-        $pdf->SetFont('helvetica', 'B', 16); // Example: Helvetica Bold, Size 16
-        $pdf->SetTextColor(0, 0, 0); // Black text
-
-        /* * IMPORTANT: Adjust X and Y Coordinates!
-         * You MUST measure the positions (in millimeters) on your PDF template 
-         * where you want the text to appear and update the SetXY(X, Y) values below.
-         * (0,0) is the top-left corner. X increases to the right, Y increases downwards.
-         * A standard A4 Landscape page is 297mm wide x 210mm high.
-         */
-
-        // Add User Name (Example: Positioned at 100mm from left, 90mm from top)
-        $pdf->SetXY(100, 90); 
-        $pdf->Write(0, strtoupper($user['name'])); // Write text: 0 = line height (auto)
-
-        // Add Event Title (Example: Positioned at 100mm from left, 110mm from top)
-        $pdf->SetFont('helvetica', '', 12); // Change font style if needed
-        $pdf->SetXY(100, 110);
-        $pdf->Write(0, $event['title']);
-
-        // Add Event Date (Example: Positioned at 100mm from left, 120mm from top)
-        $pdf->SetXY(100, 120);
-        $pdf->Write(0, 'on ' . date('F j, Y', strtotime($event['date'])));
-        
-        // --- Define Output Path ---
-        $fileName = $event['id'] . '_' . $user['id'] . '_cert.pdf';
-        $filePath = WRITEPATH . 'uploads/certificates/' . $fileName;
-
-        // Ensure the output directory exists
-        $certDir = dirname($filePath);
-        if (!is_dir($certDir)) {
-            mkdir($certDir, 0777, true);
-        }
-
-        // --- Save the PDF ---
-        // 'F' saves the file to the path specified in $filePath
-        try {
-            $pdf->Output($filePath, 'F');
-            return $filePath; // Return the path if successful
-        } catch (\Exception $e) {
-            log_message('error', 'Failed to save certificate PDF: ' . $e->getMessage());
-            return false; // Return false on failure
-        }
+        return redirect()->to('coordinator/certificates')->with('success', "Published $generatedCount certificates successfully.");
     }
 }
+

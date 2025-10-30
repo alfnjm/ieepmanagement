@@ -3,7 +3,8 @@
 namespace App\Controllers;
 
 use App\Models\EventModel;
-use App\Models\RegistrationModel;
+// --- FIX: Changed from RegistrationModel to EventRegistrationModel ---
+use App\Models\EventRegistrationModel;
 use App\Models\UserModel;
 
 class User extends BaseController
@@ -11,7 +12,8 @@ class User extends BaseController
     public function dashboard()
     {
         $eventModel = new EventModel();
-        $registrationModel = new RegistrationModel();
+        // --- FIX: Changed from RegistrationModel to EventRegistrationModel ---
+        $registrationModel = new EventRegistrationModel();
 
         $userId = session()->get('id');
 
@@ -21,6 +23,7 @@ class User extends BaseController
         $registeredEvents = [];
         if ($userId) {
             // Fetch all registration records
+            // --- FIX: Changed from RegistrationModel to EventRegistrationModel ---
             $userRegs = $registrationModel->where('user_id', $userId)->findAll();
             foreach ($userRegs as $reg) {
                 // Store the whole registration record
@@ -46,7 +49,8 @@ class User extends BaseController
         }
 
         $userId = $session->get('id');
-        $registrationModel = new RegistrationModel();
+        // --- FIX: Changed from RegistrationModel to EventRegistrationModel ---
+        $registrationModel = new EventRegistrationModel();
 
         // Prevent duplicate registrations
         $existing = $registrationModel
@@ -64,7 +68,7 @@ class User extends BaseController
         $registrationModel->insert([
             'user_id'    => $userId,
             'event_id'   => $eventId,
-            // 'certificate_ready' etc. default to 0
+            // 'is_attended', 'certificate_published' etc. default to 0
             'created_at' => date('Y-m-d H:i:s'),
         ]);
 
@@ -85,19 +89,20 @@ class User extends BaseController
         $db = \Config\Database::connect();
 
         // Join registrations with events
-        $registrations = $db->table('registrations')
-            // --- CHANGED --- : Added certificate_published and certificate_path
-            ->select('registrations.event_id, registrations.certificate_published, registrations.certificate_path, events.title, events.date')
-            ->join('events', 'events.id = registrations.event_id')
-            ->where('registrations.user_id', $userId)
-            // --- CHANGED --- : Check if 'certificate_published' is 1
-            ->where('registrations.certificate_published', 1)
+        // --- FIX: Changed table 'registrations' to 'event_registrations' ---
+        $registrations = $db->table('event_registrations')
+            // --- FIX: Updated table references ---
+            ->select('event_registrations.event_id, event_registrations.certificate_published, event_registrations.certificate_path, events.title, events.date')
+            ->join('events', 'events.id = event_registrations.event_id')
+            ->where('event_registrations.user_id', $userId)
+            ->where('event_registrations.certificate_published', 1)
             ->get()
             ->getResultArray();
 
-        return view('user/certificates', [
+        // --- FIX: Point to singular 'user/certificate' view ---
+        return view('user/certificate', [
             'title' => 'My Certificates',
-            'certificates' => $registrations,
+            'certificates' => $registrations, // View expects 'certificates'
         ]);
     }
 
@@ -111,7 +116,8 @@ class User extends BaseController
         }
 
         $userId = $session->get('id');
-        $registrationModel = new RegistrationModel();
+        // --- FIX: Changed from RegistrationModel to EventRegistrationModel ---
+        $registrationModel = new EventRegistrationModel();
 
         // 1. Check Registration and if it's published
         $registration = $registrationModel
@@ -122,7 +128,8 @@ class User extends BaseController
         // --- CHANGED --- : Updated the check
         if (empty($registration) || $registration['certificate_published'] != 1 || empty($registration['certificate_path'])) {
             return redirect()
-                ->to('user/certificates')
+                // --- FIX: Point to singular 'user/certificate' page ---
+                ->to('user/certificate')
                 ->with('error', 'Certificate not available. It may not be published by the coordinator yet.');
         }
 
@@ -214,3 +221,4 @@ class User extends BaseController
         }
     }
 }
+

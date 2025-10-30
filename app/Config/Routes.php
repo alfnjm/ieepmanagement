@@ -20,13 +20,6 @@ $routes->GET('auth/logout', 'Auth::logout');
 
 
 // User Dashboard
-// $routes->GET('user/dashboard', 'User::dashboard');
-// In app/Config/Routes.php
-// $routes->get('profile', 'Profile::index');
-// $routes->post('updateProfile', 'User::updateProfile');
-// $routes->GET('user/registerEvent/(:num)', 'User::registerEvent/$1');
-// $routes->GET('user/printCertificate/(:num)', 'User::printCertificate/$1');
-
 $routes->group('user', function ($routes) {
     // 1. Dashboard: Maps GET /user/dashboard -> User::dashboard()
     $routes->get('dashboard', 'User::dashboard');
@@ -39,29 +32,18 @@ $routes->group('user', function ($routes) {
     $routes->get('registerEvent/(:num)', 'User::registerEvent/$1');
     // 5. Certificate Download: Maps GET /user/downloadCertificate/5 -> User::downloadCertificate(5)
     $routes->get('downloadCertificate/(:num)', 'User::downloadCertificate/$1'); 
+    // 6. My Certificates: Maps GET /user/certificates -> User::certificates()
+    $routes->get('certificates', 'User::certificates');
 });
 
 // Events: REMOVED leading slashes for consistency
-// Original: $routes->GET('/events', 'Events::index');
 $routes->GET('events', 'Events::index');
-// Original: $routes->GET('/events/detail/(:num)', 'Events::detail/$1');
 $routes->GET('events/detail/(:num)', 'Events::detail/$1');
-// Original: $routes->GET('/events/register/(:num)', 'Events::register/$1');
 $routes->GET('events/register/(:num)', 'Events::register/$1');
-// Original: $routes->GET('/events/cancel/(:num)', 'Events::cancel/$1');
 $routes->GET('events/cancel/(:num)', 'Events::cancel/$1');
-// Add this line, preferably near your other public routes
 $routes->get('event/(:num)', 'Events::detail/$1');
 
-
-// $routes->group('admin', static function ($routes) {
-//     $routes->GET('dashboard', 'Admin::dashboard');
-//     $routes->POST('create', 'Admin::createUser');
-//     $routes->GET('edit/(:num)', 'Admin::editUser/$1');
-//     $routes->POST('edit/(:num)', 'Admin::editUser/$1');
-//     $routes->delete('delete/(:num)', 'Admin::deleteUser/$1');
-// });
-
+// Admin Routes
 $routes->get('admin/dashboard', 'Admin::dashboard');
 $routes->get('admin/users', 'Admin::users');
 $routes->get('admin/events', 'Admin::events');
@@ -70,6 +52,7 @@ $routes->get('admin/edit/(:num)', 'Admin::editUser/$1');
 $routes->post('admin/edit/(:num)', 'Admin::editUser/$1');
 $routes->get('admin/deleteUser/(:num)', 'Admin::deleteUser/$1');
 
+// Coordinator Routes
 $routes->GET('coordinator/dashboard', 'Coordinator::dashboard');
 $routes->get('coordinator/proposals', 'Coordinator::proposals');
 $routes->get('coordinator/registration', 'Coordinator::registrationControl');
@@ -82,18 +65,20 @@ $routes->get('coordinator/rejectProposal/(:num)', 'Coordinator::rejectProposal/$
 $routes->match(['GET', 'POST'], 'coordinator/attendance', 'Coordinator::attendance');
 $routes->get('coordinator/certificates', 'Coordinator::certificates', ['filter' => 'coordinator']);
 $routes->get('coordinator/publish_certificates/(:num)', 'Coordinator::publish_certificates/$1', ['filter' => 'coordinator']);
+// --- ADDED --- Moved template management from Organizer to Coordinator
+$routes->match(['GET', 'POST'], 'coordinator/templates', 'Coordinator::templates', ['filter' => 'coordinator']);
 
 
+// Organizer Routes
 $routes->GET('organizer/dashboard', 'Organizer::dashboard');
 $routes->get('organizer/create-event', 'Organizer::createEvent');
 $routes->get('organizer/my-proposals', 'Organizer::myProposals');
-//$routes->get('organizer/participants', 'Organizer::participants');
-$routes->get('organizer/certificates', 'Organizer::certificates');
-$routes->match(['GET', 'POST'], 'organizer/attendance', 'Organizer::attendance');
-$routes->post('organizer/submitProposal', 'Organizer::submitProposal');
-$routes->get('organizer/view-certificate/(:num)', 'Organizer::viewCertificate/$1');
 $routes->get('organizer/participants', 'Organizer::participants');
-$routes->match(['get', 'post'], 'organizer/attendance', 'Organizer::attendance');
-$routes->match(['get', 'post'], 'organizer/templates', 'Organizer::templates');
+$routes->post('organizer/submitProposal', 'Organizer::submitProposal');
+$routes->match(['GET', 'POST'], 'organizer/attendance', 'Organizer::attendance');
 
+// --- REMOVED --- Certificate and Template routes from organizer
+// $routes->get('organizer/certificates', 'Organizer::certificates');
+// $routes->get('organizer/view-certificate/(:num)', 'Organizer::viewCertificate/$1');
+// $routes->match(['GET', 'POST'], 'organizer/templates', 'Organizer::templates');
 

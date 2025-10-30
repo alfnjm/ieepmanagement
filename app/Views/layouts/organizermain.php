@@ -37,6 +37,7 @@
             z-index: 1000;
             transition: all 0.3s ease;
             box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+            overflow-y: auto; /* Added for scrolling */
         }
         
         .sidebar-header {
@@ -70,6 +71,7 @@
             font-size: 1rem;
             font-weight: 500;
             transition: background-color 0.2s, color 0.2s;
+            white-space: nowrap; /* Prevent text wrapping */
         }
         
         .sidebar-nav .nav-link i {
@@ -129,6 +131,7 @@
             color: white;
             border: none;
             font-size: 1.5rem;
+            border-radius: 0.375rem; /* Added */
         }
 
         /* Footer */
@@ -154,6 +157,7 @@
         @media (max-width: 768px) {
             .sidebar {
                 left: -100%; /* Hide sidebar off-screen */
+                z-index: 1030; /* Ensure sidebar is above overlay */
             }
             
             .sidebar.active {
@@ -178,7 +182,7 @@
                 width: 100%;
                 height: 100%;
                 background: rgba(0,0,0,0.4);
-                z-index: 999;
+                z-index: 1020; /* Below sidebar, above content */
                 display: none;
             }
             
@@ -209,7 +213,7 @@
             </li>
             <li>
                 <a href="<?= base_url('organizer/create-event') ?>" class="nav-link <?= (uri_string() == 'organizer/create-event') ? 'active' : '' ?>">
-                    <i class="bi bi-plus-square-fill"></i> Create Event
+                    <i class="bi bi-plus-square-fill"></i> Create Proposal
                 </a>
             </li>
             <li>
@@ -223,20 +227,12 @@
                 </a>
             </li>
             <li>
-                <a href="<?= base_url('organizer/certificates') ?>" class="nav-link <?= (uri_string() == 'organizer/certificates') ? 'active' : '' ?>">
-                    <i class="bi bi-patch-check-fill"></i> Certificates
-                </a>
-            </li>
-            <li>
-                <a href="<?= base_url('organizer/templates') ?>" class="nav-link <?= (uri_string() == 'organizer/templates') ? 'active' : '' ?>">
-                    <i class="bi bi-clipboard-check-fill"></i> Create Certificates
-                </a>
-            </li>
-            <li>
                 <a href="<?= base_url('organizer/attendance') ?>" class="nav-link <?= (uri_string() == 'organizer/attendance') ? 'active' : '' ?>">
-                    <i class="bi bi-clipboard-check-fill"></i> Attendance
+                    <i class="bi bi-person-lines-fill"></i> Mark Attendance
                 </a>
             </li>
+            
+            <!-- --- REMOVED 'Certificates' and 'Templates' links --- -->
             
             <hr class="nav-divider">
             
@@ -248,6 +244,7 @@
         </ul>
     </div>
 
+    <!-- This overlay will close the sidebar when clicked on mobile -->
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
     <div class="main-content" id="mainContent">
@@ -263,13 +260,24 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     
     <script>
-        document.getElementById('sidebarToggle').addEventListener('click', function() {
-            document.getElementById('sidebar').classList.toggle('active');
-        });
-        
-        document.getElementById('sidebarOverlay').addEventListener('click', function() {
-            document.getElementById('sidebar').classList.remove('active');
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebar = document.getElementById('sidebar');
+            const toggleButton = document.getElementById('sidebarToggle');
+            const overlay = document.getElementById('sidebarOverlay');
+
+            if (toggleButton) {
+                toggleButton.addEventListener('click', function() {
+                    sidebar.classList.toggle('active');
+                });
+            }
+
+            if (overlay) {
+                overlay.addEventListener('click', function() {
+                    sidebar.classList.remove('active');
+                });
+            }
         });
     </script>
 </body>
 </html>
+

@@ -77,7 +77,7 @@
                             Download Certificate 
                         </a>
                     <?php // Check if user ATTENDED (ready=1) but cert is NOT published yet
-                    elseif ($reg['certificate_ready'] == 1): ?>
+                        elseif ($reg['is_attended'] == 1): ?>
                         <span class="badge bg-warning text-dark mt-2">Attended (Pending Publication)</span>
                     <?php // User is registered but attendance not marked
                     else: ?>
