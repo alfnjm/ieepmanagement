@@ -115,37 +115,45 @@ class Organizer extends BaseController
     {
         $eventModel = new EventModel();
         $registrationModel = new EventRegistrationModel();
-        $userModel = new UserModel();
         
         $organizerId = session()->get('id');
         
-        $data['selected_event'] = null;
+        $data['selectedEventInfo'] = null; 
         $data['participants'] = [];
 
         // Get all approved events for this organizer
+        // --- FIX 1: Use 'date' which matches your SQL file ---
         $data['events'] = $eventModel->where('organizer_id', $organizerId)
-                                    ->where('status', 'approved')
-                                    ->findAll();
+                                     ->where('status', 'approved')
+                                     ->orderBy('date', 'DESC') // <-- THIS IS THE FIX
+                                     ->findAll();
 
         // Get selected event from query string
         $selectedEventId = $this->request->getGet('event_id');
+        $data['selected_event_id'] = $selectedEventId; 
 
         if ($selectedEventId) {
-            $data['selected_event'] = $selectedEventId; 
             
-            // Get all participants for this event with JOIN
-            $data['participants'] = $registrationModel
-                ->where('event_id', $selectedEventId)
-                ->join('users', 'users.id = event_registrations.user_id')
-                ->select('
-                    users.id as user_id, 
-                    users.name, 
-                    users.student_id, 
-                    users.email, 
-                    event_registrations.is_attended, 
-                    event_registrations.id as reg_id
-                ')
-                ->findAll();
+            $eventInfo = $eventModel->where('id', $selectedEventId)
+                                    ->where('organizer_id', $organizerId)
+                                    ->first();
+            
+            if ($eventInfo) {
+                $data['selectedEventInfo'] = $eventInfo; 
+                
+                $data['participants'] = $registrationModel
+                    ->where('event_id', $selectedEventId)
+                    ->join('users', 'users.id = event_registrations.user_id')
+                    ->select('
+                        users.id as user_id, 
+                        users.name, 
+                        users.student_id, 
+                        users.email, 
+                        event_registrations.is_attended, 
+                        event_registrations.id as reg_id
+                    ')
+                    ->findAll();
+            }
         }
 
         $data['title'] = 'Event Participants & Attendance';
@@ -231,5 +239,66 @@ class Organizer extends BaseController
                 'csrf_hash' => csrf_hash()
             ]);
         }
+    }
+
+    /**
+     * Save all attendance data from the form (POST request)
+     */
+    public function saveAttendance()
+    {
+        $eventModel = new EventModel();
+        $registrationModel = new EventRegistrationModel();
+        $organizerId = session()->get('id');
+
+        // Get the data from the form
+        $eventId = $this->request->getPost('event_id');
+        $all_attendance = $this->request->getPost('attendance');
+
+        // --- Validation and Security ---
+        if (empty($eventId) || empty($all_attendance)) {
+            return redirect()->back()->with('error', 'No event or attendance data submitted.');
+        }
+
+        // Security Check: Verify the organizer owns this event
+        $event = $eventModel->where('id', $eventId)
+                            ->where('organizer_id', $organizerId)
+                            ->first();
+
+        if (!$event) {
+            return redirect()->back()->with('error', 'You do not have permission to modify this event.');
+        }
+
+        // --- Process Updates in a Transaction ---
+        $db = \Config\Database::connect();
+        $db->transStart(); // Start a transaction
+
+        try {
+            // $all_attendance is an array like [ 'user_id' => 'is_attended' ]
+            // Example: [ '4' => '1', '10' => '0' ]
+            foreach ($all_attendance as $user_id => $is_attended) {
+                
+                // We send 1 (for checked) or 0 (for unchecked)
+                $status = ($is_attended == '1') ? 1 : 0; 
+
+                // Update the record
+                $registrationModel
+                    ->where('event_id', $eventId)
+                    ->where('user_id', $user_id)
+                    ->set('is_attended', $status)
+                    ->update();
+            }
+            
+            $db->transComplete(); // Commit the transaction
+
+        } catch (\Exception $e) {
+            // Something went wrong, roll back
+            log_message('error', '[saveAttendance] Error: ' . $e->getMessage());
+            return redirect()->to(site_url('organizer/participants') . '?event_id=' . $eventId)
+                             ->with('error', 'An error occurred while saving.');
+        }
+
+        // Success! Redirect back to the participants page
+        return redirect()->to(site_url('organizer/participants') . '?event_id=' . $eventId)
+                         ->with('success', 'Attendance saved successfully!');
     }
 }

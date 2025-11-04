@@ -78,11 +78,5 @@ $routes->group('organizer', ['filter' => 'organizer'], function($routes) {
     
     // This route lets you VIEW the page (GET request)
     $routes->get('participants', 'Organizer::participants');
-
-    // --- THIS IS THE FIX ---
-    // 1. REMOVE the old, conflicting POST route:
-    // $routes->post('participants', 'Organizer::participants');
-    
-    // 2. KEEP this new route that your JavaScript is calling:
-    $routes->post('participants/update', 'Organizer::updateAttendance');
+    $routes->post('participants/save', 'Organizer::saveAttendance', ['filter' => 'organizer']);
 });

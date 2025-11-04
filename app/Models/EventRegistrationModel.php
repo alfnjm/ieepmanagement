@@ -9,73 +9,58 @@ class EventRegistrationModel extends Model
     protected $table = 'event_registrations';
     protected $primaryKey = 'id';
 
-    // All fields that can be mass-assigned
+    // FIX 1: Added 'is_attended', 'created_at', and 'updated_at' to allowedFields
+    // This allows the model to write to these columns during updates.
     protected $allowedFields = [
-        'user_id',
         'event_id',
+        'user_id',
         'is_attended',
-        'certificate_published',
-        'certificate_path',
-        'certificate_ready',
         'created_at',
         'updated_at'
     ];
 
-    // Enable timestamps
+    // Enable automatic timestamps
     protected $useTimestamps = true;
     protected $createdField  = 'created_at';
+    
+    // FIX 2: Explicitly set $updatedField to 'updated_at'
+    // This tells the model to automatically update this column on save/update.
     protected $updatedField  = 'updated_at';
-    
-    // Data types
-    protected $returnType = 'array';
-    
-    // Validation rules (optional but recommended)
+
+    // Validation Rules
     protected $validationRules = [
-        'user_id'  => 'required|integer',
         'event_id' => 'required|integer',
+        'user_id'  => 'required|integer',
+        'is_attended' => 'permit_empty|in_list[0,1]',
     ];
+    protected $validationMessages = [];
+    protected $skipValidation = false;
 
     /**
-     * Get all participants for a specific event
+     * Helper method to find registrations by event
      */
-    public function getEventParticipants($eventId)
+    public function getRegistrationsByEvent($eventId)
     {
-        return $this->select('event_registrations.*, users.name, users.student_id, users.email')
-                    ->join('users', 'users.id = event_registrations.user_id')
-                    ->where('event_registrations.event_id', $eventId)
-                    ->findAll();
+        return $this->where('event_id', $eventId)->findAll();
     }
 
     /**
-     * Get all attended participants for an event
+     * Helper method to find registrations by user
      */
-    public function getAttendedParticipants($eventId)
+    public function getRegistrationsByUser($userId)
     {
-        return $this->select('event_registrations.*, users.name, users.student_id, users.email')
-                    ->join('users', 'users.id = event_registrations.user_id')
-                    ->where('event_registrations.event_id', $eventId)
-                    ->where('event_registrations.is_attended', 1)
-                    ->findAll();
+        return $this->where('user_id', $userId)->findAll();
     }
-
+    
     /**
-     * Update attendance status
+     * Helper method to get detailed participant list for an event
      */
-    public function updateAttendanceStatus($registrationId, $isAttended)
+    public function getParticipantsByEvent($eventId)
     {
-        return $this->update($registrationId, [
-            'is_attended' => $isAttended ? 1 : 0,
-            'updated_at' => date('Y-m-d H:i:s')
-        ]);
-    }
-
-    /**
-     * Check if user is registered for event
-     */
-    public function isUserRegistered($userId, $eventId)
-    {
-        return $this->where('user_id', $userId)
-                    ->where('event_id', $eventId)
-                    ->first() !== null;
+        return $this
+            ->select('event_registrations.*, users.full_name, users.email, users.student_id')
+            ->join('users', 'users.id = event_registrations.user_id')
+            ->where('event_registrations.event_id', $eventId)
+            ->findAll();
     }
 }
