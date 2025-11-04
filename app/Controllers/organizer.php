@@ -3,17 +3,16 @@
 namespace App\Controllers;
 
 use App\Models\EventModel;
-use App\Models\PendingProposalModel;
 use App\Models\EventRegistrationModel;
 use App\Models\UserModel;
 
 class Organizer extends BaseController
 {
-    // ... (dashboard, createEvent, submitProposal, myProposals methods are unchanged) ...
+    // Dashboard method
     public function dashboard()
     {
         $eventModel = new EventModel();
-        $proposalModel = new PendingProposalModel();
+        $proposalModel = new \App\Models\PendingProposalModel();
         $registrationModel = new EventRegistrationModel();
         
         $organizerId = session()->get('id');
@@ -43,12 +42,14 @@ class Organizer extends BaseController
         return view('organizer/dashboard', $data);
     }
 
+    // Create Event method
     public function createEvent()
     {
         $data['title'] = 'Create Event Proposal';
         return view('organizer/create_event', $data);
     }
 
+    // Submit Proposal method
     public function submitProposal()
     {
         $session = session();
@@ -78,7 +79,7 @@ class Organizer extends BaseController
         $proposalFile->move(FCPATH . 'uploads/proposals', $proposalName);
         $semesters = $this->request->getPost('eligible_semesters');
         $eligible_semesters = is_array($semesters) ? implode(',', $semesters) : null;
-        $model = new PendingProposalModel();
+        $model = new \App\Models\PendingProposalModel();
         $dataToSave = [
             'organizer_id' => $organizerId,
             'event_name' => $this->request->getPost('title'),
@@ -97,9 +98,10 @@ class Organizer extends BaseController
         return redirect()->to('organizer/my-proposals')->with('success', 'Proposal submitted successfully.');
     }
 
+    // My Proposals method
     public function myProposals()
     {
-        $proposalModel = new PendingProposalModel();
+        $proposalModel = new \App\Models\PendingProposalModel();
         $userId = session()->get('id');
         $data['proposals'] = $proposalModel->where('organizer_id', $userId)->findAll();
         $data['title'] = 'My Proposals';
@@ -107,7 +109,7 @@ class Organizer extends BaseController
     }
     
     /**
-     * This function just loads the page (GET request)
+     * Display participants page (GET request)
      */
     public function participants()
     {
@@ -120,15 +122,18 @@ class Organizer extends BaseController
         $data['selected_event'] = null;
         $data['participants'] = [];
 
+        // Get all approved events for this organizer
         $data['events'] = $eventModel->where('organizer_id', $organizerId)
                                     ->where('status', 'approved')
                                     ->findAll();
 
+        // Get selected event from query string
         $selectedEventId = $this->request->getGet('event_id');
 
         if ($selectedEventId) {
             $data['selected_event'] = $selectedEventId; 
             
+            // Get all participants for this event with JOIN
             $data['participants'] = $registrationModel
                 ->where('event_id', $selectedEventId)
                 ->join('users', 'users.id = event_registrations.user_id')
@@ -149,49 +154,82 @@ class Organizer extends BaseController
 
     
     /**
-     * THIS IS THE FUNCTION YOUR VIEW NEEDS.
-     * It handles the JavaScript 'fetch' request.
+     * Update attendance via AJAX (POST request)
+     * This is called when organizer checks/unchecks attendance checkbox
      */
     public function updateAttendance()
     {
-        // Check if it's an AJAX request for security
+        // Verify this is an AJAX request
         if (!$this->request->isAJAX()) {
-            return $this->response->setStatusCode(403, 'Forbidden');
+            return $this->response->setStatusCode(403)
+                                  ->setJSON(['status' => 'error', 'message' => 'Invalid request']);
         }
 
         $registrationModel = new EventRegistrationModel();
         
+        // Get POST data
         $eventId = $this->request->getPost('event_id');
         $userId = $this->request->getPost('user_id');
         $isAttended = $this->request->getPost('is_attended') ? 1 : 0;
 
-        // A quick check to make sure we have the data we need
-        if (empty($eventId) || !is_numeric($userId)) {
-             return $this->response->setJSON(['status' => 'error', 'message' => 'Missing data.']);
-        }
-
-        // Find the specific registration record to update
-        $registration = $registrationModel
-            ->where('event_id', $eventId)
-            ->where('user_id', $userId)
-            ->first();
-
-        if ($registration) {
-            // Use the primary key ('id') to update
-            $registrationModel->update($registration['id'], ['is_attended' => $isAttended]);
-            
-            // Send a success response back to the JavaScript
+        // Validate input
+        if (empty($eventId) || empty($userId)) {
             return $this->response->setJSON([
-                'status' => 'success',
-                'csrf_hash' => csrf_hash() 
+                'status' => 'error', 
+                'message' => 'Missing event_id or user_id',
+                'csrf_hash' => csrf_hash()
             ]);
         }
 
-        return $this->response->setJSON([
-            'status' => 'error', 
-            'message' => 'Participant not found.',
-            'csrf_hash' => csrf_hash()
-        ]);
+        try {
+            // Find the registration record
+            $registration = $registrationModel
+                ->where('event_id', $eventId)
+                ->where('user_id', $userId)
+                ->first();
+
+            if (!$registration) {
+                return $this->response->setJSON([
+                    'status' => 'error',
+                    'message' => 'Registration record not found',
+                    'csrf_hash' => csrf_hash()
+                ]);
+            }
+
+            // Update the attendance status
+            $updateData = [
+                'is_attended' => $isAttended,
+                'updated_at' => date('Y-m-d H:i:s')
+            ];
+            
+            $result = $registrationModel->update($registration['id'], $updateData);
+
+            if ($result) {
+                return $this->response->setJSON([
+                    'status' => 'success',
+                    'message' => 'Attendance updated successfully',
+                    'csrf_hash' => csrf_hash()
+                ]);
+            } else {
+                // Log the error for debugging
+                log_message('error', 'Failed to update attendance for registration ID: ' . $registration['id']);
+                
+                return $this->response->setJSON([
+                    'status' => 'error',
+                    'message' => 'Failed to update database',
+                    'csrf_hash' => csrf_hash()
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            // Log the exception
+            log_message('error', 'Exception in updateAttendance: ' . $e->getMessage());
+            
+            return $this->response->setJSON([
+                'status' => 'error',
+                'message' => 'Server error: ' . $e->getMessage(),
+                'csrf_hash' => csrf_hash()
+            ]);
+        }
     }
 }
-
