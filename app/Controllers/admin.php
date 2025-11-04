@@ -50,13 +50,15 @@ class Admin extends BaseController
      * Ongoing Events Page
      */
     public function events()
-    {
-        $data = [
-            'title' => 'Ongoing Events',
-        ];
-
-        return view('admin/events', $data);
-    }
+{
+    $eventModel = new \App\Models\EventModel();
+    $today = date('Y-m-d'); // Current date is 2025-10-30
+    $data['events'] = $eventModel->where('date >=', $today)
+                                 ->orderBy('date', 'ASC')
+                                 ->findAll();
+    $data['title'] = 'Ongoing & Upcoming Events';
+    return view('admin/events', $data);
+}
 
     /**
      * Create new user
