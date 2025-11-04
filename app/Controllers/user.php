@@ -112,8 +112,9 @@ class User extends BaseController
         }
 
         // 3. Get the file path
-        // Use ROOTPATH to get the full server path
-        $filePath = ROOTPATH . $registration['certificate_path'];
+        // Use FCPATH to get the public path, or ROOTPATH if it's in writable
+        // We moved it to FCPATH (public/certificates)
+        $filePath = FCPATH . $registration['certificate_path'];
 
         // 4. Check if the file actually exists
         if (!file_exists($filePath)) {

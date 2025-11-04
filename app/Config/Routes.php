@@ -34,7 +34,6 @@ $routes->group('user', function ($routes) {
     $routes->get('downloadCertificate/(:num)', 'User::downloadCertificate/$1'); 
     // 6. My Certificates: Maps GET /user/certificates -> User::certificates()
     $routes->get('certificates', 'User::certificates');
-    $routes->get('downloadCertificate/(:num)', 'User::downloadCertificate/$1');
 });
 
 // Events: REMOVED leading slashes for consistency

@@ -124,4 +124,57 @@ class UserModel extends Model
 
         return $counts;
     }
+
+    public function registerEvent($eventId)
+    {
+        $session = session();
+        $userId = $session->get('id');
+
+        // Check if user is logged in
+        if (!$userId) {
+            return redirect()->to('/auth/login')->with('error', 'Please log in first.');
+        }
+
+        // --- THIS IS THE FIX ---
+        $eventModel = new EventModel();
+        $registrationModel = new EventRegistrationModel();
+
+        // 1. Fetch the event
+        $event = $eventModel->find($eventId);
+
+        if (!$event) {
+            return redirect()->to('user/dashboard')->with('error', 'Event not found.');
+        }
+
+        // 2. Get today's date
+        $today = date('Y-m-d'); 
+
+        // 3. Block registration if event date is in the past
+        if ($event['date'] < $today) {
+            return redirect()->to('user/dashboard')->with('error', 'Registration is closed. This event has already passed.');
+        }
+        // --- END OF FIX ---
+
+
+        // Prevent duplicate registrations
+        $existing = $registrationModel
+            ->where('user_id', $userId)
+            ->where('event_id', $eventId)
+            ->first();
+
+        if ($existing) {
+            return redirect()->to('user/dashboard')
+                             ->with('info', 'You are already registered for this event.');
+        }
+
+        // Insert registration
+        $registrationModel->insert([
+            'user_id'    => $userId,
+            'event_id'   => $eventId,
+            'created_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        return redirect()->to('user/dashboard')
+                         ->with('success', 'Successfully registered for the event.');
+    }
 }
