@@ -70,9 +70,19 @@ $routes->match(['GET', 'POST'], 'coordinator/templates', 'Coordinator::templates
 
 
 // Organizer Routes
-$routes->GET('organizer/dashboard', 'Organizer::dashboard');
-$routes->get('organizer/create-event', 'Organizer::createEvent');
-$routes->get('organizer/my-proposals', 'Organizer::myProposals');
-$routes->get('organizer/participants', 'Organizer::participants');
-$routes->post('organizer/submitProposal', 'Organizer::submitProposal');
-$routes->match(['GET', 'POST'], 'organizer/attendance', 'Organizer::attendance');
+$routes->group('organizer', ['filter' => 'organizer'], function($routes) {
+    $routes->get('dashboard', 'Organizer::dashboard');
+    $routes->get('create-event', 'Organizer::createEvent');
+    $routes->post('submitProposal', 'Organizer::submitProposal');
+    $routes->get('my-proposals', 'Organizer::myProposals');
+    
+    // This route lets you VIEW the page (GET request)
+    $routes->get('participants', 'Organizer::participants');
+
+    // --- THIS IS THE FIX ---
+    // 1. REMOVE the old, conflicting POST route:
+    // $routes->post('participants', 'Organizer::participants');
+    
+    // 2. KEEP this new route that your JavaScript is calling:
+    $routes->post('participants/update', 'Organizer::updateAttendance');
+});

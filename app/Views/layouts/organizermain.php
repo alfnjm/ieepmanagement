@@ -223,12 +223,7 @@
             </li>
             <li>
                 <a href="<?= base_url('organizer/participants') ?>" class="nav-link <?= (uri_string() == 'organizer/participants') ? 'active' : '' ?>">
-                    <i class="bi bi-people-fill"></i> Participants
-                </a>
-            </li>
-            <li>
-                <a href="<?= base_url('organizer/attendance') ?>" class="nav-link <?= (uri_string() == 'organizer/attendance') ? 'active' : '' ?>">
-                    <i class="bi bi-person-lines-fill"></i> Mark Attendance
+                    <i class="bi bi-people-fill"></i> Participants & Attendance
                 </a>
             </li>
             

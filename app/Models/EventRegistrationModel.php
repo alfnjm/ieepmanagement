@@ -4,28 +4,27 @@ namespace App\Models;
 
 use CodeIgniter\Model;
 
-// --- FIX ---
-// The class name is now 'EventRegistrationModel' to match the file name
-// and what the 'organizer.php' controller is looking for.
 class EventRegistrationModel extends Model
 {
-    // --- FIX ---
-    // Pointing to the correct 'event_registrations' table
     protected $table = 'event_registrations';
     protected $primaryKey = 'id';
 
-    // --- FIX ---
-    // Added all fields from this table
+    // --- FIX 1: ADD 'updated_at' TO ALLOWED FIELDS ---
     protected $allowedFields = [
         'user_id',
         'event_id',
         'is_attended',
         'certificate_published',
-        'certificate_path'
-        // 'created_at' is handled by $useTimestamps
+        'certificate_path',
+        'created_at', // Added for safety
+        'updated_at'  // This is required for updates
     ];
 
     protected $useTimestamps = true;
     protected $createdField  = 'created_at';
-    protected $updatedField  = ''; // No updated_at field in the migration
+    
+    // --- FIX 2: TELL THE MODEL THE CORRECT COLUMN NAME ---
+    // This must be 'updated_at', not ''
+    protected $updatedField  = 'updated_at';
 }
+

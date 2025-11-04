@@ -4,11 +4,12 @@ namespace App\Controllers;
 
 use App\Models\EventModel;
 use App\Models\PendingProposalModel;
-use App\Models\EventRegistrationModel; // --- ADDED THIS LINE BACK ---
+use App\Models\EventRegistrationModel;
 use App\Models\UserModel;
 
 class Organizer extends BaseController
 {
+    // ... (dashboard, createEvent, submitProposal, myProposals methods are unchanged) ...
     public function dashboard()
     {
         $eventModel = new EventModel();
@@ -16,36 +17,27 @@ class Organizer extends BaseController
         $registrationModel = new EventRegistrationModel();
         
         $organizerId = session()->get('id');
-
-        // 1. Get all event IDs for this organizer that are approved
         $eventIds = $eventModel->where('organizer_id', $organizerId)
                              ->where('status', 'approved')
-                             ->findColumn('id'); // Gets just the IDs, e.g., [4, 6]
-
+                             ->findColumn('id');
         $stats = [
             'my_events'           => 0,
             'proposals_submitted' => 0,
             'total_participants'  => 0,
             'certificates_issued' => 0
         ];
-
-        // 2. Calculate stats
         $stats['my_events'] = count($eventIds);
         $stats['proposals_submitted'] = $proposalModel->where('organizer_id', $organizerId)->countAllResults();
-
-        // 3. Calculate stats only if the organizer has events
         if (!empty($eventIds)) {
             $stats['total_participants'] = $registrationModel
                 ->whereIn('event_id', $eventIds)
                 ->where('is_attended', 1)
                 ->countAllResults();
-            
             $stats['certificates_issued'] = $registrationModel
                 ->whereIn('event_id', $eventIds)
                 ->where('certificate_published', 1)
                 ->countAllResults();
         }
-
         $data['stats'] = $stats;
         $data['title'] = 'Organizer Dashboard';
         return view('organizer/dashboard', $data);
@@ -61,8 +53,6 @@ class Organizer extends BaseController
     {
         $session = session();
         $organizerId = $session->get('id');
-
-        // --- FIX 1: Added validation rules for ALL form fields ---
         $rules = [
             'title' => 'required|min_length[3]|max_length[255]',
             'description' => 'required',
@@ -74,34 +64,21 @@ class Organizer extends BaseController
             'poster' => 'uploaded[poster]|max_size[poster,10240]|is_image[poster]',
             'proposal' => 'uploaded[proposal]|max_size[proposal,10240]|ext_in[proposal,pdf]',
         ];
-
         if (!$this->validate($rules)) {
-            // Re-load the view with validation errors
             return view('organizer/create_event', [
                 'validation' => $this->validator,
                 'title' => 'Create Event Proposal'
             ]);
         }
-
-        // --- FIX 2: Correctly handle file uploads ---
         $posterFile = $this->request->getFile('poster');
         $proposalFile = $this->request->getFile('proposal');
-
         $posterName = $posterFile->getRandomName();
         $proposalName = $proposalFile->getRandomName();
-
-        // Use the correct public-facing path for file assets
         $posterFile->move(FCPATH . 'uploads/posters', $posterName);
         $proposalFile->move(FCPATH . 'uploads/proposals', $proposalName);
-
-        // --- FIX 3: Handle the checkbox array ---
         $semesters = $this->request->getPost('eligible_semesters');
         $eligible_semesters = is_array($semesters) ? implode(',', $semesters) : null;
-
         $model = new PendingProposalModel();
-        
-        // --- FIX 4: Map form names (e.g., 'title') to DB column names (e.g., 'event_name') ---
-        // This is the main reason your data was NULL.
         $dataToSave = [
             'organizer_id' => $organizerId,
             'event_name' => $this->request->getPost('title'),
@@ -112,13 +89,11 @@ class Organizer extends BaseController
             'program_start' => $this->request->getPost('program_start'),
             'program_end' => $this->request->getPost('program_end'),
             'eligible_semesters' => $eligible_semesters,
-            'poster_image' => $posterName, // Map to 'poster_image'
-            'proposal_file' => $proposalName, // Map to 'proposal_file'
-            'status' => 'Pending' // Explicitly set status
+            'poster_image' => $posterName, 
+            'proposal_file' => $proposalName, 
+            'status' => 'Pending' 
         ];
-        
         $model->save($dataToSave);
-
         return redirect()->to('organizer/my-proposals')->with('success', 'Proposal submitted successfully.');
     }
 
@@ -130,51 +105,11 @@ class Organizer extends BaseController
         $data['title'] = 'My Proposals';
         return view('organizer/my_proposals', $data);
     }
-
-    public function participants()
-    {
-        // Load necessary models
-        $eventModel = new EventModel();
-        $registrationModel = new EventRegistrationModel(); 
-        $userId = session()->get('id');
-
-        // --- FIX: Initialize $selected_event to null ---
-        $data['selected_event'] = null;
-        $data['participants'] = []; // Default to empty array
-
-        // Get events for the dropdown
-        $data['events'] = $eventModel->where('organizer_id', $userId)
-                                     ->where('status', 'approved')
-                                     ->findAll();
-
-        // Check for a selected event from the URL
-        $selectedEventId = $this->request->getGet('event_id');
-
-        if ($selectedEventId) {
-            $data['selected_event'] = $selectedEventId; // Set the selected event
-            
-            // Get participants ONLY for the selected event
-            $data['participants'] = $registrationModel
-                ->join('users', 'users.id = event_registrations.user_id')
-                ->join('events', 'events.id = event_registrations.event_id')
-                ->where('event_registrations.event_id', $selectedEventId) // Only for this event
-                ->where('event_registrations.is_attended', 1) // Only attended participants
-                ->select('
-                    events.title as event_title, 
-                    events.date as event_date, 
-                    users.name as participant_name, 
-                    users.student_id as student_id, 
-                    users.email as email
-                ')
-                ->findAll();
-        }
-
-        // Pass data to the view
-        $data['title'] = 'Event Participants';
-        return view('organizer/participants', $data);
-    }
     
-    public function attendance()
+    /**
+     * This function just loads the page (GET request)
+     */
+    public function participants()
     {
         $eventModel = new EventModel();
         $registrationModel = new EventRegistrationModel();
@@ -182,51 +117,18 @@ class Organizer extends BaseController
         
         $organizerId = session()->get('id');
         
-        // --- FIX: Initialize $selected_event to null ---
         $data['selected_event'] = null;
         $data['participants'] = [];
 
-        // --- Handle POST request for SAVING attendance ---
-        if ($this->request->getMethod() === 'post') {
-            
-            $participants = $this->request->getPost('participants'); 
-            if (is_null($participants)) {
-                $participants = []; // Treat no checks as an empty array
-            }
-            
-            $eventId = $this->request->getPost('event_id'); 
-
-            if (!empty($eventId)) {
-                $allRegistrations = $registrationModel->where('event_id', $eventId)->findAll();
-
-                foreach ($allRegistrations as $reg) {
-                    $attended = in_array($reg['user_id'], $participants) ? 1 : 0;
-                    $registrationModel->update($reg['id'], ['is_attended' => $attended]);
-                }
-                
-                session()->setFlashdata('success', 'Attendance updated successfully.');
-            } else {
-                session()->setFlashdata('error', 'Could not save attendance. Event ID was missing.');
-            }
-            
-            // Redirect back to the same page, preserving the selected event
-            return redirect()->to('organizer/attendance?event_id=' . $eventId);
-        }
-        
-        // --- Handle GET request for DISPLAYING participants ---
-        
-        // Get only 'approved' events for the dropdown
         $data['events'] = $eventModel->where('organizer_id', $organizerId)
                                     ->where('status', 'approved')
                                     ->findAll();
 
-        // Check if an event_id is provided in the URL (from the dropdown)
         $selectedEventId = $this->request->getGet('event_id');
 
         if ($selectedEventId) {
-            $data['selected_event'] = $selectedEventId; // Set the selected event
+            $data['selected_event'] = $selectedEventId; 
             
-            // Get participants for the selected event
             $data['participants'] = $registrationModel
                 ->where('event_id', $selectedEventId)
                 ->join('users', 'users.id = event_registrations.user_id')
@@ -241,7 +143,55 @@ class Organizer extends BaseController
                 ->findAll();
         }
 
-        $data['title'] = 'Mark Attendance';
-        return view('organizer/attendance', $data);
+        $data['title'] = 'Event Participants & Attendance';
+        return view('organizer/participants', $data); 
+    }
+
+    
+    /**
+     * THIS IS THE FUNCTION YOUR VIEW NEEDS.
+     * It handles the JavaScript 'fetch' request.
+     */
+    public function updateAttendance()
+    {
+        // Check if it's an AJAX request for security
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(403, 'Forbidden');
+        }
+
+        $registrationModel = new EventRegistrationModel();
+        
+        $eventId = $this->request->getPost('event_id');
+        $userId = $this->request->getPost('user_id');
+        $isAttended = $this->request->getPost('is_attended') ? 1 : 0;
+
+        // A quick check to make sure we have the data we need
+        if (empty($eventId) || !is_numeric($userId)) {
+             return $this->response->setJSON(['status' => 'error', 'message' => 'Missing data.']);
+        }
+
+        // Find the specific registration record to update
+        $registration = $registrationModel
+            ->where('event_id', $eventId)
+            ->where('user_id', $userId)
+            ->first();
+
+        if ($registration) {
+            // Use the primary key ('id') to update
+            $registrationModel->update($registration['id'], ['is_attended' => $isAttended]);
+            
+            // Send a success response back to the JavaScript
+            return $this->response->setJSON([
+                'status' => 'success',
+                'csrf_hash' => csrf_hash() 
+            ]);
+        }
+
+        return $this->response->setJSON([
+            'status' => 'error', 
+            'message' => 'Participant not found.',
+            'csrf_hash' => csrf_hash()
+        ]);
     }
 }
+
