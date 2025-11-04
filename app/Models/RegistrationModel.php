@@ -6,7 +6,7 @@ use CodeIgniter\Model;
 
 class RegistrationModel extends Model
 {
-    protected $table = 'registrations';
+    protected $table = 'event_registrations';
     protected $primaryKey = 'id';
 
     // ✅ Only include columns that actually exist in your table
