@@ -113,7 +113,7 @@
     </nav>
 
     <main class="content">
-        <div class="container">
-            <?= $this->renderSection('content') ?>
-        </div>
+        <?= $this->renderSection('content') ?>
     </main>
+
+    <?= $this->include('layouts/footerT') ?>

@@ -13,84 +13,135 @@
         <div class="alert alert-info"><?= session()->getFlashdata('info') ?></div>
     <?php endif; ?>
 
-    <h3 class="mb-4">Ongoing Events</h3>
-    <div class="row">
+    
+    <ul class="nav nav-tabs nav-fill mb-3" id="eventsTab" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="upcoming-tab" data-bs-toggle="tab" data-bs-target="#upcoming" type="button" role="tab" aria-controls="upcoming" aria-selected="true">
+                Upcoming Events
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="past-tab" data-bs-toggle="tab" data-bs-target="#past" type="button" role="tab" aria-controls="past" aria-selected="false">
+                My Event History
+            </button>
+        </li>
+    </ul>
 
-        <?php 
-        $listEvents = $events ?? [];
-        ?>
+    <?php 
+    // Get today's date once for the logic inside the loops
+    $today = date('Y-m-d'); 
+    ?>
 
-        <?php if (empty($listEvents)): ?>
-            <div class="col-12">
-                <p class="alert alert-info">There are no events currently available.</p>
-            </div>
-        <?php else: ?>
-            <?php 
-            // Get today's date once outside the loop for efficiency
-            $today = date('Y-m-d'); 
-            ?>
-            <?php foreach($listEvents as $event): ?>
-            <div class="col-md-4">
-                <div class="card mb-4 shadow-sm">
-                    <?php if(!empty($event['thumbnail'])): ?>
-                        <img src="<?= is_file(FCPATH.'uploads/posters/'.$event['thumbnail']) 
-                                    ? base_url('uploads/posters/'.$event['thumbnail']) 
-                                    : base_url('uploads/posters/default.jpg') // Fallback image
-                                  ?>" 
-                             class="card-img-top" 
-                             alt="Event Thumbnail"
-                             style="height: 200px; object-fit: cover;">
-                    <?php endif; ?>
-                    <div class="card-body">
-                        <h5 class="card-title"><?= esc($event['title']) ?></h5>
-                        <p class="card-text"><?= esc(mb_strimwidth($event['description'] ?? '', 0, 100, "...")) ?></p>
-                        <small class="text-muted"><?= esc($event['date']) ?> @ <?= esc($event['location']) ?></small><br>
-                    </div>
+    <div class="tab-content" id="eventsTabContent">
 
-                    <div class="card-footer text-center">
-                        <?php 
-                        // 1. Check if user is already registered
-                        if(isset($registeredEvents[$event['id']])): 
-                            $reg = $registeredEvents[$event['id']]; // Get the specific registration details
-                        ?>
-                        
-                            <?php // Check if certificate is PUBLISHED
-                            if($reg['certificate_published'] == 1 && !empty($reg['certificate_path'])): ?>
-                                
-                                <a href="<?= site_url('user/downloadCertificate/'.$reg['id']) ?>" 
-                                   class="btn btn-success">
-                                    Download Certificate 
-                                </a>
+        <div class="tab-pane fade show active" id="upcoming" role="tabpanel" aria-labelledby="upcoming-tab">
+            <div class="row mt-4">
 
-                            <?php // Check if user ATTENDED but cert is NOT published
-                                elseif ($reg['is_attended'] == 1): ?>
-                                <span class="badge bg-warning text-dark">Attended (Pending Publication)</span>
-                            
-                            <?php // User is registered but attendance not marked
-                            else: ?>
-                                <span class="badge bg-primary">Registered</span>
-                            <?php endif; ?>
-
-                        <?php 
-                        // 2. Check if the event date is in the past
-                        elseif ($event['date'] < $today): 
-                        ?>
-                            <span class="btn btn-secondary disabled">Event Passed</span>
-                        
-                        <?php 
-                        // 3. Otherwise, OK to register
-                        else: 
-                        ?>
-                            <a href="<?= site_url('user/registerEvent/'.$event['id']) ?>" 
-                               class="btn btn-primary">Register</a>
+            <?php if (empty($upcoming_events)): ?>
+                <div class="col-12">
+                    <p class="alert alert-info">There are no upcoming events at this time.</p>
+                </div>
+            <?php else: ?>
+                <?php foreach($upcoming_events as $event): ?>
+                <div class="col-md-4">
+                    <div class="card mb-4 shadow-sm">
+                        <?php if(!empty($event['thumbnail'])): ?>
+                            <img src="<?= is_file(FCPATH.'uploads/posters/'.$event['thumbnail']) 
+                                ? base_url('uploads/posters/'.$event['thumbnail']) 
+                                : base_url('uploads/posters/default.jpg') // Fallback image
+                            ?>" 
+                            class="card-img-top" 
+                            alt="Event Thumbnail"
+                            style="height: 200px; object-fit: cover;">
                         <?php endif; ?>
+                        <div class="card-body">
+                            <h5 class="card-title"><?= esc($event['title']) ?></h5>
+                            <p class="card-text"><?= esc(mb_strimwidth($event['description'] ?? '', 0, 100, "...")) ?></p>
+                            <small class="text-muted"><?= esc($event['date']) ?> @ <?= esc($event['location']) ?></small><br>
+                        </div>
+
+                        <div class="card-footer text-center">
+                            <?php if(isset($registeredEvents[$event['id']])): 
+                                $reg = $registeredEvents[$event['id']]; ?>
+                            
+                                <?php if($reg['certificate_published'] == 1 && !empty($reg['certificate_path'])): ?>
+                                    <a href="<?= site_url('user/downloadCertificate/'.$reg['id']) ?>" 
+                                       class="btn btn-success">
+                                        Download Certificate 
+                                    </a>
+                                <?php elseif ($reg['is_attended'] == 1): ?>
+                                    <span class="badge bg-warning text-dark">Attended (Pending Publication)</span>
+                                <?php else: ?>
+                                    <span class="badge bg-primary">Registered</span>
+                                <?php endif; ?>
+
+                            <?php elseif ($event['date'] < $today): ?>
+                                <span class="btn btn-secondary disabled">Event Passed</span>
+                            <?php else: ?>
+                                <a href="<?= site_url('user/registerEvent/'.$event['id']) ?>" 
+                                   class="btn btn-primary">Register</a>
+                            <?php endif; ?>
+                        </div>
                     </div>
                 </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
             </div>
-            <?php endforeach; ?>
-        <?php endif; ?>
+        </div>
 
-    </div>
-</div>
+        <div class="tab-pane fade" id="past" role="tabpanel" aria-labelledby="past-tab">
+            <div class="row mt-4">
 
-<?= $this->include('layouts/footerT') ?>
+            <?php if (empty($past_events)): ?>
+                <div class="col-12">
+                    <p class="alert alert-info">You have no past events in your history.</p>
+                </div>
+            <?php else: ?>
+                <?php foreach($past_events as $event): ?>
+                <div class="col-md-4">
+                    <div class="card mb-4 shadow-sm">
+                        <?php if(!empty($event['thumbnail'])): ?>
+                            <img src="<?= is_file(FCPATH.'uploads/posters/'.$event['thumbnail']) 
+                                ? base_url('uploads/posters/'.$event['thumbnail']) 
+                                : base_url('uploads/posters/default.jpg') // Fallback image
+                            ?>" 
+                            class="card-img-top" 
+                            alt="Event Thumbnail"
+                            style="height: 200px; object-fit: cover; filter: grayscale(50%);">
+                        <?php endif; ?>
+                        <div class="card-body">
+                            <h5 class="card-title"><?= esc($event['title']) ?></h5>
+                            <p class="card-text"><?= esc(mb_strimwidth($event['description'] ?? '', 0, 100, "...")) ?></p>
+                            <small class="text-muted"><?= esc($event['date']) ?> @ <?= esc($event['location']) ?></small><br>
+                        </div>
+
+                        <div class="card-footer text-center">
+                            <?php if(isset($registeredEvents[$event['id']])): 
+                                $reg = $registeredEvents[$event['id']]; ?>
+                            
+                                <?php if($reg['certificate_published'] == 1 && !empty($reg['certificate_path'])): ?>
+                                    <a href="<?= site_url('user/downloadCertificate/'.$reg['id']) ?>" 
+                                       class="btn btn-success">
+                                        Download Certificate 
+                                    </a>
+                                <?php elseif ($reg['is_attended'] == 1): ?>
+                                    <span class="badge bg-warning text-dark">Attended (Pending Publication)</span>
+                                <?php else: ?>
+                                    <span class="badge bg-secondary">Registered (Not Attended)</span>
+                                <?php endif; ?>
+
+                            <?php elseif ($event['date'] < $today): ?>
+                                <span class="btn btn-secondary disabled">Event Passed</span>
+                            <?php else: ?>
+                                <a href="<?= site_url('user/registerEvent/'.$event['id']) ?>" 
+                                   class="btn btn-primary">Register</a>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+            </div>
+        </div>
+
+    </div> </div> <?= $this->include('layouts/footerT') ?>

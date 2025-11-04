@@ -10,23 +10,31 @@ class Home extends BaseController
 {
     public function index()
     {
-        // 1. Fetch all approved events from the live table
+        // 1. Setup models and get today's date
         $eventModel = new EventModel();
+        $registrationModel = new RegistrationModel();
+        $today = date('Y-m-d');
 
-        // --- FIX ---
-        // The method 'getApprovedEvents()' does not exist in your EventModel.
-        // We will use a direct query to get approved events instead.
-        $data['events'] = $eventModel
+        // --- MODIFICATION ---
+        // 2. Fetch all approved UPCOMING events
+        $data['upcoming_events'] = $eventModel
             ->where('status', 'approved')
-            ->orderBy('date', 'DESC') // Optional: Show newest events first
+            ->where('date >=', $today) // Events on or after today
+            ->orderBy('date', 'ASC')   // Show soonest events first
             ->findAll();
-        // --- End Fix ---
+
+        // 3. Fetch all approved PAST events
+        $data['past_events'] = $eventModel
+            ->where('status', 'approved')
+            ->where('date <', $today)  // Events before today
+            ->orderBy('date', 'DESC') // Show most recent past events first
+            ->findAll();
+        // --- End Modification ---
 
 
-        // 2. Fetch user registration data if logged in
+        // 4. Fetch user registration data if logged in
         $registeredEvents = [];
         if (session()->get('isLoggedIn')) {
-            $registrationModel = new RegistrationModel();
             $userId = session()->get('id');
             
             // This part is great! It checks all registrations for the current user.
@@ -40,7 +48,7 @@ class Home extends BaseController
         }
         $data['registeredEvents'] = $registeredEvents;
 
-        // 3. Pass data to the view.
+        // 5. Pass all data to the view.
         return view('home', $data); 
     }
 }

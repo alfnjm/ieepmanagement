@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Models\EventModel;
 use App\Models\EventRegistrationModel;
+use App\Models\RegistrationModel;
 use App\Models\UserModel;
 
 class User extends BaseController
@@ -11,27 +12,42 @@ class User extends BaseController
     public function dashboard()
     {
         $eventModel = new EventModel();
-        $registrationModel = new EventRegistrationModel();
+        $registrationModel = new RegistrationModel();
+        
+        $today = date('Y-m-d');
         $userId = session()->get('id');
 
-        $events = $eventModel
-            ->where('status', 'approved') // Only show approved events
-            ->orderBy('date', 'DESC')
+        // 1. Fetch all approved UPCOMING events
+        $data['upcoming_events'] = $eventModel
+            ->where('status', 'approved')
+            ->where('date >=', $today) // Events on or after today
+            ->orderBy('date', 'ASC')   // Show soonest events first
             ->findAll();
 
+        // 2. Fetch all approved PAST events
+        $data['past_events'] = $eventModel
+            ->where('status', 'approved')
+            ->where('date <', $today)  // Events before today
+            ->orderBy('date', 'DESC') // Show most recent past events first
+            ->findAll();
+
+        // 3. Fetch all of this user's registrations for quick lookup
+        // We need the full registration data for the certificate logic
         $registeredEvents = [];
         if ($userId) {
-            $userRegs = $registrationModel->where('user_id', $userId)->findAll();
-            foreach ($userRegs as $reg) {
+            $userRegistrations = $registrationModel
+                ->where('user_id', $userId)
+                ->findAll();
+            
+            // Map registrations to event IDs for quick lookup in the view
+            foreach ($userRegistrations as $reg) {
                 $registeredEvents[$reg['event_id']] = $reg;
             }
         }
+        $data['registeredEvents'] = $registeredEvents;
 
-        return view('user/dashboard', [
-            'title' => 'Event Dashboard',
-            'events' => $events,
-            'registeredEvents' => $registeredEvents
-        ]);
+        // 4. Pass all data to the view
+        return view('user/dashboard', $data);
     }
 
     public function registerEvent($eventId)
