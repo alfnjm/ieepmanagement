@@ -1,40 +1,52 @@
 <?= $this->extend('layouts/usermain') ?>
 <?= $this->section('content') ?>
-<div class="container mt-5">
-    <h2><?= $title ?? 'My Certificates' ?></h2>
+
+<div class="container-fluid px-4">
+    <h1 class="mt-4"><?= $title ?></h1>
+    <ol class="breadcrumb mb-4">
+        <li class="breadcrumb-item"><a href="<?= site_url('user/dashboard') ?>">Dashboard</a></li>
+        <li class="breadcrumb-item active"><?= $title ?></li>
+    </ol>
     
-    <?php if (session()->getFlashdata('success')): ?>
-        <div class="alert alert-success"><?= session()->getFlashdata('success') ?></div>
-    <?php endif; ?>
+    <p>This page lists all your certificates from events you have attended and that have been published by the coordinator.</p>
 
-    <?php if (!empty($registrations)): ?>
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>Event</th>
-                    <th>Date</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($registrations as $reg): ?>
-                    <tr>
-                        <td><?= esc($reg['event_title']) ?></td>
-                        <td><?= date('M d, Y', strtotime($reg['event_date'])) ?></td>
-                        <td>
-                            <!-- This route MUST exist -->
-                            <a href="<?= base_url('user/downloadCertificate/' . $reg['event_id']) ?>" class="btn btn-primary btn-sm" target="_blank">
-                                Download Certificate
-                            </a>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-    <?php else: ?>
-        <p>You have no certificates available for download at this time.</p>
-        <p>Certificates are made available after you have attended an event and the event coordinator has published them.</p>
-    <?php endif; ?>
-
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            <th>Event Name</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($certificates)): ?>
+                            <tr>
+                                <td colspan="3" class="text-center">You do not have any certificates available to download yet.</td>
+                            </tr>
+                        <?php else: ?>
+                            <?php $i = 1; ?>
+                            <?php foreach ($certificates as $cert): ?>
+                                <tr>
+                                    <td><?= $i++ ?></td>
+                                    <td><?= esc($cert['event_name']) ?></td>
+                                    <td>
+                                        <a href="<?= base_url($cert['certificate_path']) ?>" 
+                                           class="btn btn-sm btn-success" 
+                                           target="_blank">
+                                            <i class="fas fa-download"></i> Download
+                                        </a>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
+
 <?= $this->endSection() ?>

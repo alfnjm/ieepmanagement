@@ -34,6 +34,7 @@ $routes->group('user', function ($routes) {
     $routes->get('downloadCertificate/(:num)', 'User::downloadCertificate/$1'); 
     // 6. My Certificates: Maps GET /user/certificates -> User::certificates()
     $routes->get('certificates', 'User::certificates');
+    $routes->get('downloadCertificate/(:num)', 'User::downloadCertificate/$1');
 });
 
 // Events: REMOVED leading slashes for consistency
@@ -64,9 +65,10 @@ $routes->get('coordinator/approveProposal/(:num)', 'Coordinator::approveProposal
 $routes->get('coordinator/rejectProposal/(:num)', 'Coordinator::rejectProposal/$1');
 $routes->match(['GET', 'POST'], 'coordinator/attendance', 'Coordinator::attendance');
 $routes->get('coordinator/certificates', 'Coordinator::certificates', ['filter' => 'coordinator']);
-$routes->get('coordinator/publish_certificates/(:num)', 'Coordinator::publish_certificates/$1', ['filter' => 'coordinator']);
+$routes->post('coordinator/publish_certificates', 'Coordinator::publish_certificates');
 // --- ADDED --- Moved template management from Organizer to Coordinator
 $routes->match(['GET', 'POST'], 'coordinator/templates', 'Coordinator::templates', ['filter' => 'coordinator']);
+$routes->get('coordinator/preview_template/(:num)', 'Coordinator::previewTemplate/$1');
 
 
 // Organizer Routes

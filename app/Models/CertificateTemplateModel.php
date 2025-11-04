@@ -10,11 +10,11 @@ class CertificateTemplateModel extends Model
     protected $primaryKey = 'id';
     
     protected $allowedFields = [
-        'organizer_id',
+        'coordinator_id', 
         'template_name',
         'template_path',
         'name_x', 'name_y',
         'event_x', 'event_y',
-        'student_id_x', 'student_id_y' // <-- ADDED THESE
+        'student_id_x', 'student_id_y'
     ];
 }
