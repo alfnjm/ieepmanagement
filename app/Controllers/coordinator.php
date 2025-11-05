@@ -397,4 +397,38 @@ class Coordinator extends BaseController
         $this->response->setHeader('Content-Type', 'application/pdf');
         $pdf->Output('I', 'template_preview.pdf');
     }
+
+    public function deleteTemplate($id)
+    {
+        $templateModel = new CertificateTemplateModel();
+        $coordinatorId = session()->get('id');
+
+        // Find the template and verify ownership
+        $template = $templateModel->where('id', $id)
+                                  ->where('coordinator_id', $coordinatorId)
+                                  ->first();
+
+        if (!$template) {
+            return redirect()->to('coordinator/templates')->with('error', 'Template not found or you do not have permission to delete it.');
+        }
+
+        // 1. Delete the physical file
+        $templatePath = ROOTPATH . $template['template_path'];
+        if (file_exists($templatePath)) {
+            if (!unlink($templatePath)) {
+                // Log the error but proceed to delete the DB record
+                log_message('error', 'Could not delete template file: ' . $templatePath);
+                // We could stop here, but it might be better to remove the DB record anyway
+                // to prevent broken links. For this case, we'll return an error.
+                return redirect()->to('coordinator/templates')->with('error', 'Failed to delete the template file from the server. Please check file permissions.');
+            }
+        }
+
+        // 2. Delete the database record
+        if ($templateModel->delete($id)) {
+            return redirect()->to('coordinator/templates')->with('success', 'Template deleted successfully.');
+        } else {
+            return redirect()->to('coordinator/templates')->with('error', 'Failed to delete the template from the database.');
+        }
+    }
 }
