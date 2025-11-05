@@ -18,6 +18,8 @@ $routes->match(['GET', 'POST'], 'auth/login', 'Auth::login');
 // Ensure NO leading slash here
 $routes->GET('auth/logout', 'Auth::logout');
 
+$routes->get('event/(:num)', 'Events::view/$1');
+
 
 // User Dashboard
 $routes->group('user', function ($routes) {
@@ -68,7 +70,7 @@ $routes->post('coordinator/publish_certificates', 'Coordinator::publish_certific
 // --- ADDED --- Moved template management from Organizer to Coordinator
 $routes->match(['GET', 'POST'], 'coordinator/templates', 'Coordinator::templates', ['filter' => 'coordinator']);
 $routes->get('coordinator/preview_template/(:num)', 'Coordinator::previewTemplate/$1');
-
+$routes->post('coordinator/delete_template/(:num)', 'Coordinator::deleteTemplate/$1', ['filter' => 'coordinator']);
 
 // Organizer Routes
 $routes->group('organizer', ['filter' => 'organizer'], function($routes) {

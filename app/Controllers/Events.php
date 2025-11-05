@@ -116,5 +116,17 @@ class Events extends BaseController
         
         return view('events/detail', $data);
     }
+
+    public function view($id)
+    {
+        $eventModel = new \App\Models\EventModel(); // Make sure you have this model
+        $event = $eventModel->find($id);
+
+        if (!$event) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound("Event not found");
+        }
+
+        return view('event_detail', ['event' => $event]);
+    }
     
 }

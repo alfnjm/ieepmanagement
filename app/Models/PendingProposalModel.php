@@ -20,8 +20,10 @@ class PendingProposalModel extends Model
         'poster_image',
         'proposal_file',
         'status',
-        'organizer_id'
+        'organizer_id',
+        'event_days',
+        'created_at',
+        'updated_at'
     ];
-
     protected $useTimestamps = true;
 }

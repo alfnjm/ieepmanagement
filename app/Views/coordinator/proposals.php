@@ -29,6 +29,7 @@
         <tbody>
           <?php if (!empty($pendingProposals)): ?>
             <?php foreach ($pendingProposals as $index => $proposal): ?>
+              <?php $status = strtolower($proposal['status']); ?>
               <tr>
                 <td><?= $index + 1 ?></td>
                 <td><?= esc($proposal['event_name']) ?></td>
@@ -36,30 +37,36 @@
                 <td><?= esc($proposal['event_location']) ?></td>
                 <td><?= esc($proposal['eligible_semesters']) ?></td>
                 <td>
-                  <a href="<?= base_url('uploads/proposals/'.$proposal['proposal_file']) ?>" target="_blank" class="btn btn-sm btn-outline-primary">
-                    View
-                  </a>
+                  <?php if (!empty($proposal['proposal_file'])): ?>
+                    <a href="<?= base_url('uploads/proposals/'.$proposal['proposal_file']) ?>" target="_blank" class="btn btn-sm btn-outline-primary">
+                      View
+                    </a>
+                  <?php else: ?>
+                    <span class="text-muted">N/A</span>
+                  <?php endif; ?>
                 </td>
                 <td>
-                  <a href="<?= base_url('uploads/posters/'.$proposal['poster_image']) ?>" target="_blank" class="btn btn-sm btn-outline-secondary">
-                    Poster
-                  </a>
+                  <?php if (!empty($proposal['poster_image'])): ?>
+                    <a href="<?= base_url('uploads/posters/'.$proposal['poster_image']) ?>" target="_blank" class="btn btn-sm btn-outline-secondary">
+                      Poster
+                    </a>
+                  <?php else: ?>
+                    <span class="text-muted">N/A</span>
+                  <?php endif; ?>
                 </td>
-                <td>
-                  <?php if ($proposal['status'] === 'Pending'): ?>
+                <td class="text-center">
+                  <?php if ($status === 'pending'): ?>
                     <span class="badge bg-warning text-dark">Pending</span>
-                  <?php elseif ($proposal['status'] === 'Approved'): ?>
+                  <?php elseif ($status === 'approved'): ?>
                     <span class="badge bg-success">Approved</span>
                   <?php else: ?>
                     <span class="badge bg-danger">Rejected</span>
                   <?php endif; ?>
                 </td>
                 <td class="text-center">
-                  <?php if ($proposal['status'] === 'Pending'): ?>
-                    <a href="<?= base_url('coordinator/approveProposal/'.$proposal['id']) ?>" 
-                       class="btn btn-sm btn-success">Approve</a>
-                    <a href="<?= base_url('coordinator/rejectProposal/'.$proposal['id']) ?>" 
-                       class="btn btn-sm btn-danger">Reject</a>
+                  <?php if ($status === 'pending'): ?>
+                    <a href="<?= base_url('coordinator/approveProposal/'.$proposal['id']) ?>" class="btn btn-sm btn-success">Approve</a>
+                    <a href="<?= base_url('coordinator/rejectProposal/'.$proposal['id']) ?>" class="btn btn-sm btn-danger">Reject</a>
                   <?php else: ?>
                     <em>N/A</em>
                   <?php endif; ?>

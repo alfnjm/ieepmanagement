@@ -10,7 +10,6 @@
         <div class="alert alert-danger"><?= session()->getFlashdata('error') ?></div>
     <?php endif; ?>
     
-    <!-- Validation Errors -->
     <?php if (isset($validation)): ?>
         <div class="alert alert-danger" role="alert">
             <?= $validation->listErrors() ?>
@@ -44,7 +43,6 @@
                             <input type="number" name="name_y" class="form-control" placeholder="Y" value="<?= set_value('name_y', 120) ?>">
                         </div>
                     </div>
-                    <!-- --- FIXED: Added Student ID --- -->
                     <div class="col-md-4">
                         <label>Student ID (X, Y)</label>
                         <div class="input-group">
@@ -59,8 +57,7 @@
                             <input type="number" name="event_y" class="form-control" placeholder="Y" value="<?= set_value('event_y', 150) ?>">
                         </div>
                     </div>
-                    <!-- --- FIXED: Removed Event Date --- -->
-                </div>
+                    </div>
                 
                 <button type="submit" class="btn btn-primary mt-3"><i class="bi bi-upload"></i> Save Template</button>
             </form>
@@ -80,7 +77,6 @@
                             <th>Name (X,Y)</th>
                             <th>Student ID (X,Y)</th>
                             <th>Event (X,Y)</th>
-                            <!-- --- FIXED: Removed Date --- -->
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -94,16 +90,17 @@
                                     <td><?= esc($t['name_x']) ?>, <?= esc($t['name_y']) ?></td>
                                     <td><?= esc($t['student_id_x'] ?? 'N/A') ?>, <?= esc($t['student_id_y'] ?? 'N/A') ?></td>
                                     <td><?= esc($t['event_x']) ?>, <?= esc($t['event_y']) ?></td>
-                                    <!-- --- FIXED: Removed Date --- -->
                                     <td>
-                                        <!-- --- FIXED: Added Preview Button --- -->
                                         <a href="<?= base_url('coordinator/preview_template/' . $t['id']) ?>" class="btn btn-sm btn-info" target="_blank" title="Preview">
                                             <i class="bi bi-eye-fill"></i>
                                         </a>
-                                        <a href="<?= base_url($t['template_path']) ?>" class="btn btn-sm btn-outline-secondary" target="_blank" title="View Original PDF">
-                                            <i class="bi bi-file-pdf"></i>
-                                        </a>
-                                    </td>
+                                        <form action="<?= base_url('coordinator/delete_template/' . $t['id']) ?>" method="post" style="display: inline-block;" onsubmit="return confirm('Are you sure you want to delete this template? This cannot be undone.');">
+                                            <?= csrf_field() ?>
+                                            <button type="submit" class="btn btn-sm btn-danger" title="Delete">
+                                                <i class="bi bi-trash-fill"></i>
+                                            </button>
+                                        </form>
+                                        </td>
                                 </tr>
                             <?php endforeach; ?>
                         <?php endif; ?>
@@ -115,4 +112,3 @@
 </div>
 
 <?= $this->endSection() ?>
-

@@ -52,51 +52,56 @@ class Organizer extends BaseController
     // Submit Proposal method
     public function submitProposal()
     {
-        $session = session();
-        $organizerId = $session->get('id');
-        $rules = [
-            'title' => 'required|min_length[3]|max_length[255]',
+        $validation = \Config\Services::validation();
+
+        $validation->setRules([
+            'title' => 'required',
             'description' => 'required',
-            'date' => 'required|valid_date',
-            'event_time' => 'required',
+            'date' => 'required',
+            'time' => 'required',
             'event_location' => 'required',
-            'program_start' => 'required',
-            'program_end' => 'required',
-            'poster' => 'uploaded[poster]|max_size[poster,10240]|is_image[poster]',
-            'proposal' => 'uploaded[proposal]|max_size[proposal,10240]|ext_in[proposal,pdf]',
-        ];
-        if (!$this->validate($rules)) {
-            return view('organizer/create_event', [
-                'validation' => $this->validator,
-                'title' => 'Create Event Proposal'
-            ]);
+            'poster' => 'uploaded[poster]|max_size[poster,2048]|is_image[poster]',
+            'proposal' => 'uploaded[proposal]|max_size[proposal,5120]|ext_in[proposal,pdf]',
+        ]);
+
+        if (!$validation->withRequest($this->request)->run()) {
+            return view('organizer/create_event', ['validation' => $validation]);
         }
-        $posterFile = $this->request->getFile('poster');
-        $proposalFile = $this->request->getFile('proposal');
-        $posterName = $posterFile->getRandomName();
-        $proposalName = $proposalFile->getRandomName();
-        $posterFile->move(FCPATH . 'uploads/posters', $posterName);
-        $proposalFile->move(FCPATH . 'uploads/proposals', $proposalName);
-        $semesters = $this->request->getPost('eligible_semesters');
-        $eligible_semesters = is_array($semesters) ? implode(',', $semesters) : null;
-        $model = new \App\Models\PendingProposalModel();
-        $dataToSave = [
-            'organizer_id' => $organizerId,
-            'event_name' => $this->request->getPost('title'),
-            'event_description' => $this->request->getPost('description'),
-            'event_date' => $this->request->getPost('date'),
-            'event_time' => $this->request->getPost('event_time'),
-            'event_location' => $this->request->getPost('event_location'),
-            'program_start' => $this->request->getPost('program_start'),
-            'program_end' => $this->request->getPost('program_end'),
-            'eligible_semesters' => $eligible_semesters,
-            'poster_image' => $posterName, 
-            'proposal_file' => $proposalName, 
-            'status' => 'Pending' 
+
+        // Upload poster
+        $poster = $this->request->getFile('poster');
+        $posterName = time() . '_' . $poster->getName();
+        $poster->move('uploads/posters', $posterName);
+
+        // Upload proposal
+        $proposal = $this->request->getFile('proposal');
+        $proposalName = time() . '_' . $proposal->getName();
+        $proposal->move('uploads/proposals', $proposalName);
+
+        // Prepare data to match your pending_proposals table
+        $data = [
+            'event_name'         => $this->request->getPost('title'),
+            'event_description'  => $this->request->getPost('description'),
+            'event_date'         => $this->request->getPost('date'),
+            'event_time'         => $this->request->getPost('time'),
+            'event_location'     => $this->request->getPost('event_location'),
+            'program_start'      => $this->request->getPost('program_start') ?: null,
+            'program_end'        => $this->request->getPost('program_end') ?: null,
+            'eligible_semesters' => implode(',', $this->request->getPost('eligible_semesters') ?? []),
+            'poster_image'       => $posterName,
+            'proposal_file'      => $proposalName,
+            'status'             => 'pending',
+            'organizer_id'       => session()->get('id'),
+            'event_days'         => json_encode($this->request->getPost('event_days') ?? []),
         ];
-        $model->save($dataToSave);
-        return redirect()->to('organizer/my-proposals')->with('success', 'Proposal submitted successfully.');
-    }
+
+        // Save to pending_proposals table
+        $proposalModel = new \App\Models\PendingProposalModel();
+        $proposalModel->insert($data);
+
+        return redirect()->to('/organizer/my-proposals')
+            ->with('success', 'Event proposal submitted successfully and is pending IEEP approval.');
+}
 
     // My Proposals method
     public function myProposals()

@@ -48,7 +48,7 @@ class Coordinator extends BaseController
             ->join('users', 'users.id = pending_proposals.organizer_id')
             ->select('pending_proposals.*, users.email as organizer_name')
             // --- FIX 3: Changed to 'Pending' (case-sensitive) ---
-            ->where('status', 'Pending')
+            ->where('status', 'pending')
             ->findAll();
         
         $data['title'] = 'Pending Proposals';
@@ -125,34 +125,34 @@ class Coordinator extends BaseController
         $proposal = $pendingModel->find($id);
 
         if ($proposal) {
-            
-            // --- THIS IS THE FIX ---
-            // We are now mapping all the fields from the pending_proposals
-            // table to the correct columns in the events table.
+            // Map proposal fields to the event table
             $dataToInsert = [
                 'title'              => $proposal['event_name'],
                 'description'        => $proposal['event_description'],
                 'date'               => $proposal['event_date'],
-                'time'               => $proposal['event_time'], // <-- Added this
-                'location'           => $proposal['event_location'], // <-- Added this
-                'program_start'      => $proposal['program_start'], // <-- Added this
-                'program_end'        => $proposal['program_end'], // <-- Added this
-                'eligible_semesters' => $proposal['eligible_semesters'], // <-- Added this
-                'thumbnail'          => $proposal['poster_image'], // <-- Corrected this name
+                'time'               => $proposal['event_time'],
+                'location'           => $proposal['event_location'],
+                'program_start'      => $proposal['program_start'],
+                'program_end'        => $proposal['program_end'],
+                'eligible_semesters' => $proposal['eligible_semesters'],
+                'thumbnail'          => $proposal['poster_image'],
                 'organizer_id'       => $proposal['organizer_id'],
-                'status'             => 'approved' // Set status for the new event
+                'status'             => 'approved', // lowercase to match DB
+                'event_days'         => $proposal['event_days'], // ✅ add this line
             ];
-            
-            $eventModel->insert($dataToInsert);
-            // --- END OF FIX ---
 
-            // Update the proposal status to 'Approved' (with a capital A)
-            $pendingModel->update($id, ['status' => 'Approved']);
-            
-            return redirect()->to('coordinator/proposals')->with('success', 'Proposal approved and event created.');
+            // Insert event into the events table
+            $eventModel->insert($dataToInsert);
+
+            // ✅ Update proposal status to lowercase 'approved'
+            $pendingModel->update($id, ['status' => 'approved']);
+
+            return redirect()->to('coordinator/proposals')
+                            ->with('success', 'Proposal approved and event created successfully.');
         }
-        
-        return redirect()->to('coordinator/proposals')->with('error', 'Proposal not found.');
+
+        return redirect()->to('coordinator/proposals')
+                        ->with('error', 'Proposal not found.');
     }
 
     /**
@@ -162,7 +162,7 @@ class Coordinator extends BaseController
     {
         $pendingModel = new PendingProposalModel();
         // --- FIX 6: Changed to 'Rejected' (case-sensitive) ---
-        $pendingModel->update($id, ['status' => 'Rejected']);
+        $pendingModel->update($id, ['status' => 'rejected']);
         return redirect()->to('coordinator/proposals')->with('success', 'Proposal rejected.');
     }
 
@@ -396,5 +396,39 @@ class Coordinator extends BaseController
         // Output PDF to browser
         $this->response->setHeader('Content-Type', 'application/pdf');
         $pdf->Output('I', 'template_preview.pdf');
+    }
+
+    public function deleteTemplate($id)
+    {
+        $templateModel = new CertificateTemplateModel();
+        $coordinatorId = session()->get('id');
+
+        // Find the template and verify ownership
+        $template = $templateModel->where('id', $id)
+                                  ->where('coordinator_id', $coordinatorId)
+                                  ->first();
+
+        if (!$template) {
+            return redirect()->to('coordinator/templates')->with('error', 'Template not found or you do not have permission to delete it.');
+        }
+
+        // 1. Delete the physical file
+        $templatePath = ROOTPATH . $template['template_path'];
+        if (file_exists($templatePath)) {
+            if (!unlink($templatePath)) {
+                // Log the error but proceed to delete the DB record
+                log_message('error', 'Could not delete template file: ' . $templatePath);
+                // We could stop here, but it might be better to remove the DB record anyway
+                // to prevent broken links. For this case, we'll return an error.
+                return redirect()->to('coordinator/templates')->with('error', 'Failed to delete the template file from the server. Please check file permissions.');
+            }
+        }
+
+        // 2. Delete the database record
+        if ($templateModel->delete($id)) {
+            return redirect()->to('coordinator/templates')->with('success', 'Template deleted successfully.');
+        } else {
+            return redirect()->to('coordinator/templates')->with('error', 'Failed to delete the template from the database.');
+        }
     }
 }
