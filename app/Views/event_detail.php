@@ -4,8 +4,7 @@
 <div class="container py-5">
     <div class="card shadow border-0">
 
-        <!-- Event Poster -->
-        <?php if (!empty($event['thumbnail'])): ?>
+                <?php if (!empty($event['thumbnail'])): ?>
             <img src="<?= base_url('uploads/posters/' . $event['thumbnail']) ?>" 
                  class="card-img-top" 
                  alt="Event Poster" 
@@ -13,13 +12,11 @@
         <?php endif; ?>
 
         <div class="card-body">
-            <!-- Event Title -->
-            <h3 class="card-title mb-3 text-primary fw-bold">
+                        <h3 class="card-title mb-3 text-primary fw-bold">
                 <?= esc($event['title']) ?>
             </h3>
 
-            <!-- Event Date & Time (Main) -->
-            <?php
+                        <?php
                 $start = !empty($event['program_start']) ? new DateTime($event['program_start']) : null;
                 $end = !empty($event['program_end']) ? new DateTime($event['program_end']) : null;
 
@@ -37,15 +34,13 @@
                 }
             ?>
 
-            <!-- Event Details -->
-            <ul class="list-unstyled mb-4">
+                        <ul class="list-unstyled mb-4">
                 <li><strong>📅 Date & Time:</strong> <?= $eventDateTime ?></li>
                 <li><strong>📍 Location:</strong> <?= esc($event['location'] ?? 'N/A') ?></li>
                 <li><strong>🎓 Eligible Semesters:</strong> <?= esc($event['eligible_semesters'] ?? 'N/A') ?></li>
             </ul>
 
-            <!-- Daily Schedule -->
-            <h5 class="fw-semibold mt-3">📅 Daily Schedule</h5>
+                        <h5 class="fw-semibold mt-3">📅 Daily Schedule</h5>
             <?php
                 $days = [];
 
@@ -80,19 +75,23 @@
                 <p>No day-by-day schedule available.</p>
             <?php endif; ?>
 
-            <!-- Event Description -->
-            <h5 class="fw-semibold mt-3">Event Description</h5>
+                        <h5 class="fw-semibold mt-3">Event Description</h5>
             <p><?= esc($event['description'] ?? 'No description available.') ?></p>
 
-            <!-- Proposal PDF (if exists) -->
-            <?php if (!empty($event['proposal_file'])): ?>
+                        <?php if (!empty($event['proposal_file'])): ?>
                 <a href="<?= base_url('uploads/proposals/' . $event['proposal_file']) ?>" 
                    target="_blank" 
                    class="btn btn-outline-primary mt-2">
                     📄 View Proposal Document
                 </a>
             <?php endif; ?>
-        </div>
+
+                        <div class="mt-4">
+                                <a href="<?= base_url('auth/login') ?>" class="btn btn-primary btn-lg">
+                    Register for Event
+                </a>
+            </div>
+                    </div>
     </div>
 </div>
 
