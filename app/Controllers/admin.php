@@ -90,7 +90,7 @@ class Admin extends BaseController
             $userData = [
                 'name'        => $this->request->getPost('name'),
                 'email'       => $this->request->getPost('email'),
-                'password'    => password_hash($this->request->getPost('password'), PASSWORD_DEFAULT),
+                'password'    => $this->request->getPost('password'), // <-- REMOVED password_hash()
                 'role'        => $role,
                 'class'       => $this->request->getPost('class'),
                 'student_id'  => $this->request->getPost('student_id'),

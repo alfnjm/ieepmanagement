@@ -52,7 +52,7 @@ $routes->get('admin/events', 'Admin::events');
 $routes->post('admin/createUser', 'Admin::createUser');
 $routes->get('admin/edit/(:num)', 'Admin::editUser/$1');
 $routes->post('admin/edit/(:num)', 'Admin::editUser/$1');
-$routes->get('admin/deleteUser/(:num)', 'Admin::deleteUser/$1');
+$routes->delete('admin/delete/(:num)', 'Admin::deleteUser/$1');
 
 // Coordinator Routes
 $routes->GET('coordinator/dashboard', 'Coordinator::dashboard');
