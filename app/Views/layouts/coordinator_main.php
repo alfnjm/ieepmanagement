@@ -5,10 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $title ?? 'IEEP Coordinator Panel' ?></title>
     
-    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     
-    <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     
     <style>
@@ -116,6 +114,15 @@
             transition: padding-left 0.3s ease;
         }
         
+        /* ===== NEW BANNER STYLE START ===== */
+        .page-header {
+            background-color: #ffffff;
+            padding: 1rem 2rem;
+            border-bottom: 1px solid #e2e8f0;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+        /* ===== NEW BANNER STYLE END ===== */
+
         .content-wrapper {
             padding: 2rem;
             min-height: calc(100vh - 60px); /* Full height minus footer */
@@ -176,6 +183,12 @@
                 display: block; /* Show toggle button */
             }
             
+            /* ===== NEW BANNER MOBILE STYLE START ===== */
+            .page-header {
+                padding-left: 60px; /* Give space for the toggle button */
+            }
+            /* ===== NEW BANNER MOBILE STYLE END ===== */
+            
             /* Overlay for when sidebar is open */
             .sidebar-overlay {
                 position: fixed;
@@ -234,15 +247,12 @@
                 </a>
             </li>
             
-            <!-- --- REMOVED "Mark Attendance" link per our last change --- -->
-            
             <li>
                 <a href="<?= base_url('coordinator/certificates') ?>" class="nav-link <?= (uri_string() == 'coordinator/certificates') ? 'active' : '' ?>">
                     <i class="bi bi-patch-check-fill"></i> Publish Certificates
                 </a>
             </li>
             
-            <!-- ADDED THIS LINK TO MATCH OUR PREVIOUS CHANGE -->
             <li>
                 <a href="<?= base_url('coordinator/templates') ?>" class="nav-link <?= (uri_string() == 'coordinator/templates') ? 'active' : '' ?>">
                     <i class="bi bi-file-image"></i> Manage Templates
@@ -259,10 +269,13 @@
         </ul>
     </div>
 
-    <!-- This overlay will close the sidebar when clicked on mobile -->
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
     <div class="main-content" id="mainContent">
+        
+        <div class="page-header">
+            <h5 class="mb-0 fw-bold text-primary">IEEP Coordinator Panel</h5>
+        </div>
         <div class="content-wrapper">
             <?= $this->renderSection('content') ?>
         </div>
@@ -295,4 +308,3 @@
     </script>
 </body>
 </html>
-

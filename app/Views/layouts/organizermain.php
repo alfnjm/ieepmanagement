@@ -113,6 +113,15 @@
             padding-left: var(--sidebar-width);
             transition: padding-left 0.3s ease;
         }
+
+        /* ===== NEW BANNER STYLE START ===== */
+        .page-header {
+            background-color: #ffffff;
+            padding: 1rem 2rem;
+            border-bottom: 1px solid #e2e8f0;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+        /* ===== NEW BANNER STYLE END ===== */
         
         .content-wrapper {
             padding: 2rem;
@@ -173,6 +182,12 @@
             .sidebar-toggle {
                 display: block; /* Show toggle button */
             }
+
+            /* ===== NEW BANNER MOBILE STYLE START ===== */
+            .page-header {
+                padding-left: 60px; /* Give space for the toggle button */
+            }
+            /* ===== NEW BANNER MOBILE STYLE END ===== */
             
             /* Overlay for when sidebar is open */
             .sidebar-overlay {
@@ -227,8 +242,6 @@
                 </a>
             </li>
             
-            <!-- --- REMOVED 'Certificates' and 'Templates' links --- -->
-            
             <hr class="nav-divider">
             
             <li>
@@ -239,17 +252,20 @@
         </ul>
     </div>
 
-    <!-- This overlay will close the sidebar when clicked on mobile -->
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
     <div class="main-content" id="mainContent">
+
+        <div class="page-header">
+            <h5 class="mb-0 fw-bold text-primary">IEEP Program Organizer Panel</h5>
+        </div>
         <div class="content-wrapper">
             <?= $this->renderSection('content') ?>
         </div>
     </div>
 
     <footer class="footer">
-        IEEP Organizer Panel © <?= date('Y') ?>
+        IEEP Program Organizer Panel © <?= date('Y') ?>
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -275,4 +291,3 @@
     </script>
 </body>
 </html>
-

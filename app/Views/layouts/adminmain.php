@@ -37,6 +37,7 @@
             z-index: 1000;
             transition: all 0.3s ease;
             box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+            overflow-y: auto; /* Added for scrolling */
         }
         
         .sidebar-header {
@@ -70,6 +71,7 @@
             font-size: 1rem;
             font-weight: 500;
             transition: background-color 0.2s, color 0.2s;
+            white-space: nowrap;
         }
         
         .sidebar-nav .nav-link i {
@@ -112,6 +114,15 @@
             transition: padding-left 0.3s ease;
         }
         
+        /* ===== NEW BANNER STYLE START ===== */
+        .page-header {
+            background-color: #ffffff;
+            padding: 1rem 2rem;
+            border-bottom: 1px solid #e2e8f0;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+        /* ===== NEW BANNER STYLE END ===== */
+        
         .content-wrapper {
             padding: 2rem;
             min-height: calc(100vh - 60px); /* Full height minus footer */
@@ -129,6 +140,7 @@
             color: white;
             border: none;
             font-size: 1.5rem;
+            border-radius: 0.375rem;
         }
 
         /* Footer */
@@ -154,6 +166,7 @@
         @media (max-width: 768px) {
             .sidebar {
                 left: -100%; /* Hide sidebar off-screen */
+                z-index: 1030;
             }
             
             .sidebar.active {
@@ -169,6 +182,12 @@
             .sidebar-toggle {
                 display: block; /* Show toggle button */
             }
+
+            /* ===== NEW BANNER MOBILE STYLE START ===== */
+            .page-header {
+                padding-left: 60px; /* Give space for the toggle button */
+            }
+            /* ===== NEW BANNER MOBILE STYLE END ===== */
             
             /* Overlay for when sidebar is open */
             .sidebar-overlay {
@@ -178,7 +197,7 @@
                 width: 100%;
                 height: 100%;
                 background: rgba(0,0,0,0.4);
-                z-index: 999;
+                z-index: 1020; /* Below sidebar */
                 display: none;
             }
             
@@ -231,6 +250,10 @@
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
     <div class="main-content" id="mainContent">
+
+        <div class="page-header">
+            <h5 class="mb-0 fw-bold text-primary">IEEP Admin Panel</h5>
+        </div>
         <div class="content-wrapper">
             <?= $this->renderSection('content') ?>
         </div>
@@ -243,12 +266,22 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     
     <script>
-        document.getElementById('sidebarToggle').addEventListener('click', function() {
-            document.getElementById('sidebar').classList.toggle('active');
-        });
-        
-        document.getElementById('sidebarOverlay').addEventListener('click', function() {
-            document.getElementById('sidebar').classList.remove('active');
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebar = document.getElementById('sidebar');
+            const toggleButton = document.getElementById('sidebarToggle');
+            const overlay = document.getElementById('sidebarOverlay');
+
+            if (toggleButton) {
+                toggleButton.addEventListener('click', function() {
+                    sidebar.classList.toggle('active');
+                });
+            }
+
+            if (overlay) {
+                overlay.addEventListener('click', function() {
+                    sidebar.classList.remove('active');
+                });
+            }
         });
     </script>
 </body>
